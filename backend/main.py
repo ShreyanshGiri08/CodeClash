@@ -137,9 +137,12 @@ async def join_queue(user_id: str = Depends(get_current_user), conn=Depends(get_
         "problem_id": problem_id
     }
 
-
 @app.get("/races/{race_id}")
 def get_race(race_id: str, conn=Depends(get_db)):
+    try:
+        UUID(race_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid race_id format")
     cur = conn.cursor()
     cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
     race = cur.fetchone()
@@ -147,9 +150,75 @@ def get_race(race_id: str, conn=Depends(get_db)):
         raise HTTPException(404, "Race not found")
     return race
 
-
 @app.delete("/races/queue")
 async def leave_queue(user_id: str = Depends(get_current_user)):
     async with __import__("matchmaking").queue_lock:
         queue[:] = [e for e in queue if e["user_id"] != user_id]
     return {"status": "left queue"}
+
+from cf_client import check_verdict
+from elo import calculate_elo
+import time
+
+@app.post("/races/{race_id}/check")
+async def check_race_status(race_id: str, conn=Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
+    race = cur.fetchone()
+    if not race:
+        raise HTTPException(404, "Race not found")
+
+    if race["status"] == "finished":
+        return race  # already khatam ho chuki
+
+    # dono players ka handle nikaalo
+    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (race["player1_id"],))
+    p1 = cur.fetchone()
+    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (race["player2_id"],))
+    p2 = cur.fetchone()
+
+    contest_id = int(race["problem_id"][:-1])  # e.g. "1794C" -> 1794
+    index = race["problem_id"][-1]             # "C"
+    start_ts = int(race["started_at"].timestamp())
+
+    p1_solved = await check_verdict(p1["cf_handle"], contest_id, index, start_ts)
+    p2_solved = await check_verdict(p2["cf_handle"], contest_id, index, start_ts)
+
+    winner = None
+    if p1_solved:
+        winner = p1
+        loser = p2
+    elif p2_solved:
+        winner = p2
+        loser = p1
+
+    if winner:
+        new_winner_elo, new_loser_elo = calculate_elo(winner["elo"], loser["elo"])
+
+        cur.execute("UPDATE races SET status='finished', winner_id=%s, ended_at=NOW() WHERE id=%s",
+                    (winner["id"], race_id))
+        cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s",
+                    (new_winner_elo, winner["id"]))
+        cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s",
+                    (new_loser_elo, loser["id"]))
+
+        cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s, %s, %s)",
+                    (winner["id"], race_id, new_winner_elo))
+        cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s, %s, %s)",
+                    (loser["id"], race_id, new_loser_elo))
+
+        conn.commit()
+        cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
+        return cur.fetchone()
+
+    return race  # abhi tak koi nahi jeeta
+
+from uuid import UUID
+
+@app.post("/races/{race_id}/check")
+async def check_race_status(race_id: str, conn=Depends(get_db)):
+    try:
+        UUID(race_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid race_id format")
+    # ... baaki code same rahega

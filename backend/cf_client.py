@@ -17,3 +17,14 @@ async def get_cf_submissions(handle: str, count: int = 10) -> list:
         if data["status"] != "OK":
             return []
         return data["result"]
+    
+async def check_verdict(handle: str, contest_id: int, index: str, after_timestamp: int):
+    """Check karo agar handle ne is problem ka AC submission kiya hai race-start ke baad"""
+    submissions = await get_cf_submissions(handle, count=20)
+    for sub in submissions:
+        if (sub["problem"]["contestId"] == contest_id
+            and sub["problem"]["index"] == index
+            and sub["creationTimeSeconds"] >= after_timestamp
+            and sub["verdict"] == "OK"):
+            return True
+    return False
