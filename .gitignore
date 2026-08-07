@@ -1,0 +1,20 @@
+# Environment variables (secrets)
+.env
+backend/.env
+frontend/.env
+
+# Python
+venv/
+__pycache__/
+*.pyc
+backend/venv/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# OS/editor junk
+.DS_Store
+.vscode/
+*.log
