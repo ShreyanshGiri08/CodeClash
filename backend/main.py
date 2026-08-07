@@ -101,3 +101,55 @@ async def confirm_verification(user_id: str = Depends(get_current_user), conn=De
     cur.execute("UPDATE users SET cf_verified = TRUE, verify_code = NULL WHERE id = %s", (user_id,))
     conn.commit()
     return {"status": "verified", "handle": row["cf_handle"]}
+
+from matchmaking import try_match, get_random_problem, queue
+import asyncio
+
+@app.post("/races/queue")
+async def join_queue(user_id: str = Depends(get_current_user), conn=Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT elo FROM users WHERE id = %s", (user_id,))
+    elo = cur.fetchone()["elo"]
+
+    opponent = await try_match(user_id, elo)
+
+    if opponent is None:
+        return {"status": "waiting", "message": "Queue mein daal diya, opponent dhoondh rahe hain"}
+
+    # Match mil gaya — race create karo
+    avg_rating = (elo + opponent["elo"]) // 2
+    # round to nearest 100 (CF ratings 800,900...3500 hote hain)
+    target_rating = round(avg_rating / 100) * 100
+    problem = await get_random_problem(target_rating)
+    problem_id = f"{problem['contestId']}{problem['index']}"
+
+    cur.execute(
+        "INSERT INTO races (player1_id, player2_id, problem_id, status) VALUES (%s, %s, %s, 'active') RETURNING id",
+        (user_id, opponent["user_id"], problem_id)
+    )
+    race_id = cur.fetchone()["id"]
+    conn.commit()
+
+    return {
+        "status": "matched",
+        "race_id": race_id,
+        "opponent_id": opponent["user_id"],
+        "problem_id": problem_id
+    }
+
+
+@app.get("/races/{race_id}")
+def get_race(race_id: str, conn=Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
+    race = cur.fetchone()
+    if not race:
+        raise HTTPException(404, "Race not found")
+    return race
+
+
+@app.delete("/races/queue")
+async def leave_queue(user_id: str = Depends(get_current_user)):
+    async with __import__("matchmaking").queue_lock:
+        queue[:] = [e for e in queue if e["user_id"] != user_id]
+    return {"status": "left queue"}
