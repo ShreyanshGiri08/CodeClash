@@ -4,6 +4,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";   // yeh line add karo
 import FindRace from "./pages/FindRace";
 import Race from "./pages/Race";
+import Leaderboard from "./pages/Leaderboard";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/" element={<Navigate to="/signup" />} />
         <Route path="/race/find" element={<FindRace />} />
         <Route path="/race/:raceId" element={<Race />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
       </Routes>
     </BrowserRouter>
   );

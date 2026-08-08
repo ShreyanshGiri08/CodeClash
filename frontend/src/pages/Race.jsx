@@ -60,9 +60,9 @@ export default function Race() {
           <div className="p-8 text-center">
             {!finished ? (
               <>
-                <p className="text-zinc-500 tracking-widest mb-4">// JUDGING IN PROGRESS</p>
-                <p className="text-zinc-400">Codeforces pe problem solve karke submit karo.</p>
-                <p className="text-yellow-400 mt-2">Verdict har 4 sec check ho raha hai...</p>
+               <p className="text-zinc-500 tracking-widest mb-4">// JUDGING IN PROGRESS</p>
+               <p className="text-zinc-400">Solve the problem on Codeforces and submit.</p>
+              <p className="text-yellow-400 mt-2">Checking for a verdict every 4 seconds...</p>
               </>
             ) : (
               <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}>

@@ -1,4 +1,5 @@
 import os
+from uuid import UUID
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from fastapi import FastAPI, HTTPException, Depends
@@ -6,7 +7,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from dotenv import load_dotenv
+
 from auth import hash_password, verify_password, create_token, decode_token
+from cf_client import get_cf_user_info, check_verdict, get_problem_statement
+from matchmaking import try_match, get_random_problem, queue, queue_lock
+from elo import calculate_elo
+import random, string
 
 load_dotenv()
 
@@ -31,6 +37,9 @@ security = HTTPBearer()
 def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
     return decode_token(creds.credentials)
 
+
+# ---------- AUTH ----------
+
 class SignupRequest(BaseModel):
     email: str
     password: str
@@ -51,6 +60,7 @@ def signup(body: SignupRequest, conn=Depends(get_db)):
     token = create_token(str(user_id))
     return {"token": token, "user_id": user_id}
 
+
 class LoginRequest(BaseModel):
     email: str
     password: str
@@ -65,14 +75,15 @@ def login(body: LoginRequest, conn=Depends(get_db)):
     token = create_token(str(user["id"]))
     return {"token": token, "user_id": user["id"]}
 
+
 @app.get("/me")
 def me(user_id: str = Depends(get_current_user), conn=Depends(get_db)):
     cur = conn.cursor()
     cur.execute("SELECT id, email, cf_handle, elo, races_played FROM users WHERE id = %s", (user_id,))
     return cur.fetchone()
 
-from cf_client import get_cf_user_info
-import random, string
+
+# ---------- CF VERIFICATION ----------
 
 @app.post("/cf/start-verification")
 def start_verification(handle: str, user_id: str = Depends(get_current_user), conn=Depends(get_db)):
@@ -81,7 +92,11 @@ def start_verification(handle: str, user_id: str = Depends(get_current_user), co
     cur.execute("UPDATE users SET cf_handle = %s, verify_code = %s WHERE id = %s",
                 (handle, verify_code, user_id))
     conn.commit()
-    return {"verify_code": verify_code, "instructions": f"Apne Codeforces profile ke 'First Name' field mein '{verify_code}' temporarily daal do, phir /cf/confirm-verification call karo"}
+    return {
+        "verify_code": verify_code,
+        "instructions": f"Add '{verify_code}' to your Codeforces First Name field, then call /cf/confirm-verification"
+    }
+
 
 @app.post("/cf/confirm-verification")
 async def confirm_verification(user_id: str = Depends(get_current_user), conn=Depends(get_db)):
@@ -89,21 +104,21 @@ async def confirm_verification(user_id: str = Depends(get_current_user), conn=De
     cur.execute("SELECT cf_handle, verify_code FROM users WHERE id = %s", (user_id,))
     row = cur.fetchone()
     if not row or not row["cf_handle"]:
-        raise HTTPException(400, "Pehle handle set karo /cf/start-verification se")
+        raise HTTPException(400, "Set a handle first via /cf/start-verification")
 
     cf_info = await get_cf_user_info(row["cf_handle"])
     if not cf_info:
-        raise HTTPException(400, "CF handle nahi mila")
+        raise HTTPException(400, "Codeforces handle not found")
 
     if row["verify_code"] not in (cf_info.get("firstName") or ""):
-        raise HTTPException(400, "Verification code profile mein nahi mila")
+        raise HTTPException(400, "Verification code not found in profile")
 
     cur.execute("UPDATE users SET cf_verified = TRUE, verify_code = NULL WHERE id = %s", (user_id,))
     conn.commit()
     return {"status": "verified", "handle": row["cf_handle"]}
 
-from matchmaking import try_match, get_random_problem, queue
-import asyncio
+
+# ---------- MATCHMAKING ----------
 
 @app.post("/races/queue")
 async def join_queue(user_id: str = Depends(get_current_user), conn=Depends(get_db)):
@@ -114,12 +129,10 @@ async def join_queue(user_id: str = Depends(get_current_user), conn=Depends(get_
     opponent = await try_match(user_id, elo)
 
     if opponent is None:
-        return {"status": "waiting", "message": "Queue mein daal diya, opponent dhoondh rahe hain"}
+        return {"status": "waiting", "message": "Added to queue, searching for opponent"}
 
-    # Match mil gaya — race create karo
     avg_rating = (elo + opponent["elo"]) // 2
-    # round to nearest 100 (CF ratings 800,900...3500 hote hain)
-    target_rating = round(avg_rating / 100) * 100
+    target_rating = round(avg_rating / 100) * 100  # snap to nearest CF rating bucket
     problem = await get_random_problem(target_rating)
     problem_id = f"{problem['contestId']}{problem['index']}"
 
@@ -137,6 +150,16 @@ async def join_queue(user_id: str = Depends(get_current_user), conn=Depends(get_
         "problem_id": problem_id
     }
 
+
+@app.delete("/races/queue")
+async def leave_queue(user_id: str = Depends(get_current_user)):
+    async with queue_lock:
+        queue[:] = [e for e in queue if e["user_id"] != user_id]
+    return {"status": "left queue"}
+
+
+# ---------- RACE ----------
+
 @app.get("/races/{race_id}")
 def get_race(race_id: str, conn=Depends(get_db)):
     try:
@@ -150,80 +173,6 @@ def get_race(race_id: str, conn=Depends(get_db)):
         raise HTTPException(404, "Race not found")
     return race
 
-@app.delete("/races/queue")
-async def leave_queue(user_id: str = Depends(get_current_user)):
-    async with __import__("matchmaking").queue_lock:
-        queue[:] = [e for e in queue if e["user_id"] != user_id]
-    return {"status": "left queue"}
-
-from cf_client import check_verdict
-from elo import calculate_elo
-import time
-
-@app.post("/races/{race_id}/check")
-async def check_race_status(race_id: str, conn=Depends(get_db)):
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
-    race = cur.fetchone()
-    if not race:
-        raise HTTPException(404, "Race not found")
-
-    if race["status"] == "finished":
-        return race  # already khatam ho chuki
-
-    # dono players ka handle nikaalo
-    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (race["player1_id"],))
-    p1 = cur.fetchone()
-    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (race["player2_id"],))
-    p2 = cur.fetchone()
-
-    contest_id = int(race["problem_id"][:-1])  # e.g. "1794C" -> 1794
-    index = race["problem_id"][-1]             # "C"
-    start_ts = int(race["started_at"].timestamp())
-
-    p1_solved = await check_verdict(p1["cf_handle"], contest_id, index, start_ts)
-    p2_solved = await check_verdict(p2["cf_handle"], contest_id, index, start_ts)
-
-    winner = None
-    if p1_solved:
-        winner = p1
-        loser = p2
-    elif p2_solved:
-        winner = p2
-        loser = p1
-
-    if winner:
-        new_winner_elo, new_loser_elo = calculate_elo(winner["elo"], loser["elo"])
-
-        cur.execute("UPDATE races SET status='finished', winner_id=%s, ended_at=NOW() WHERE id=%s",
-                    (winner["id"], race_id))
-        cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s",
-                    (new_winner_elo, winner["id"]))
-        cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s",
-                    (new_loser_elo, loser["id"]))
-
-        cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s, %s, %s)",
-                    (winner["id"], race_id, new_winner_elo))
-        cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s, %s, %s)",
-                    (loser["id"], race_id, new_loser_elo))
-
-        conn.commit()
-        cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
-        return cur.fetchone()
-
-    return race  # abhi tak koi nahi jeeta
-
-from uuid import UUID
-
-@app.post("/races/{race_id}/check")
-async def check_race_status(race_id: str, conn=Depends(get_db)):
-    try:
-        UUID(race_id)
-    except ValueError:
-        raise HTTPException(400, "Invalid race_id format")
-  
-
-from cf_client import get_problem_statement
 
 @app.get("/races/{race_id}/problem")
 async def race_problem(race_id: str, conn=Depends(get_db)):
@@ -241,55 +190,60 @@ async def race_problem(race_id: str, conn=Depends(get_db)):
     index = race["problem_id"][-1]
     return await get_problem_statement(contest_id, index)
 
-def finalize_race(cur, race_id, winner, loser):
-    new_winner_elo, new_loser_elo = calculate_elo(winner["elo"], loser["elo"])
-    cur.execute("UPDATE races SET status='finished', winner_id=%s, ended_at=NOW() WHERE id=%s",
-                (winner["id"], race_id))
-    cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s",
-                (new_winner_elo, winner["id"]))
-    cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s",
-                (new_loser_elo, loser["id"]))
-    cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s,%s,%s)",
-                (winner["id"], race_id, new_winner_elo))
-    cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s,%s,%s)",
-                (loser["id"], race_id, new_loser_elo))
 
+@app.post("/races/{race_id}/check")
+async def check_race_status(race_id: str, conn=Depends(get_db)):
+    try:
+        UUID(race_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid race_id format")
 
-class SubmitLinkRequest(BaseModel):
-    link: str
-
-@app.post("/races/{race_id}/submit-link")
-async def submit_link(race_id: str, body: SubmitLinkRequest,
-                       user_id: str = Depends(get_current_user), conn=Depends(get_db)):
     cur = conn.cursor()
     cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
     race = cur.fetchone()
-    if not race or race["status"] == "finished":
-        raise HTTPException(400, "Race not active")
+    if not race:
+        raise HTTPException(404, "Race not found")
 
-    parsed = parse_submission_link(body.link)
-    if not parsed:
-        raise HTTPException(400, "Invalid submission link format")
-    contest_id, submission_id = parsed
+    if race["status"] == "finished":
+        return race
 
-    expected_problem = race["problem_id"]
-    if f"{contest_id}" not in expected_problem:
-        raise HTTPException(400, "Submission link doesn't match race problem")
+    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (race["player1_id"],))
+    p1 = cur.fetchone()
+    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (race["player2_id"],))
+    p2 = cur.fetchone()
 
-    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (user_id,))
-    me = cur.fetchone()
-    other_id = race["player2_id"] if race["player1_id"] == user_id else race["player1_id"]
-    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (other_id,))
-    opponent = cur.fetchone()
+    contest_id = int(race["problem_id"][:-1])
+    index = race["problem_id"][-1]
+    start_ts = int(race["started_at"].timestamp())
 
-    sub = await get_submission_by_id(me["cf_handle"], submission_id)
-    if not sub:
-        raise HTTPException(400, "Submission nahi mila tumhare CF profile pe")
-    if sub["verdict"] != "OK":
-        raise HTTPException(400, f"Verdict abhi {sub['verdict']} hai, AC nahi")
-    if sub["creationTimeSeconds"] < int(race["started_at"].timestamp()):
-        raise HTTPException(400, "Yeh submission race shuru hone se pehle ka hai")
+    p1_solved = await check_verdict(p1["cf_handle"], contest_id, index, start_ts)
+    p2_solved = await check_verdict(p2["cf_handle"], contest_id, index, start_ts)
 
-    finalize_race(cur, race_id, winner=me, loser=opponent)
-    conn.commit()
-    return {"status": "won", "race_id": race_id}
+    winner, loser = None, None
+    if p1_solved:
+        winner, loser = p1, p2
+    elif p2_solved:
+        winner, loser = p2, p1
+
+    if winner:
+        new_w, new_l = calculate_elo(winner["elo"], loser["elo"])
+        cur.execute("UPDATE races SET status='finished', winner_id=%s, ended_at=NOW() WHERE id=%s",
+                    (winner["id"], race_id))
+        cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s", (new_w, winner["id"]))
+        cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s", (new_l, loser["id"]))
+        cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s,%s,%s)", (winner["id"], race_id, new_w))
+        cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s,%s,%s)", (loser["id"], race_id, new_l))
+        conn.commit()
+        cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
+        return cur.fetchone()
+
+    return race
+
+
+# ---------- LEADERBOARD ----------
+
+@app.get("/leaderboard")
+def leaderboard(conn=Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT cf_handle, elo, races_played FROM users ORDER BY elo DESC LIMIT 50")
+    return cur.fetchall()
