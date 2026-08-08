@@ -28,3 +28,44 @@ async def check_verdict(handle: str, contest_id: int, index: str, after_timestam
             and sub["verdict"] == "OK"):
             return True
     return False
+
+from bs4 import BeautifulSoup
+
+_problem_cache = {}
+
+async def get_problem_statement(contest_id: int, index: str) -> dict:
+    cache_key = f"{contest_id}{index}"
+    if cache_key in _problem_cache:
+        return _problem_cache[cache_key]
+
+    url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}"
+    async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0"}) as client:
+        resp = await client.get(url)
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+    statement_div = soup.find("div", class_="problem-statement")
+    if not statement_div:
+        return {"title": f"{contest_id}{index}", "html": "", "url": url}
+
+    title_el = statement_div.find("div", class_="title")
+    title = title_el.text.strip() if title_el else f"{contest_id}{index}"
+
+    result = {"title": title, "html": str(statement_div), "url": url}
+    _problem_cache[cache_key] = result  # cache — CF servers pe baar-baar load nahi karna
+    return result
+
+import re
+
+def parse_submission_link(link: str):
+    match = re.search(r"(?:contest|problemset)/(\d+)/submission/(\d+)", link)
+    if not match:
+        return None
+    return match.group(1), match.group(2)  # contest_id, submission_id
+
+
+async def get_submission_by_id(handle: str, submission_id: str):
+    subs = await get_cf_submissions(handle, count=50)
+    for sub in subs:
+        if str(sub["id"]) == str(submission_id):
+            return sub
+    return None

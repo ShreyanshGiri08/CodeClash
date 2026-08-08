@@ -221,4 +221,75 @@ async def check_race_status(race_id: str, conn=Depends(get_db)):
         UUID(race_id)
     except ValueError:
         raise HTTPException(400, "Invalid race_id format")
-    # ... baaki code same rahega
+  
+
+from cf_client import get_problem_statement
+
+@app.get("/races/{race_id}/problem")
+async def race_problem(race_id: str, conn=Depends(get_db)):
+    try:
+        UUID(race_id)
+    except ValueError:
+        raise HTTPException(400, "Invalid race_id format")
+    cur = conn.cursor()
+    cur.execute("SELECT problem_id FROM races WHERE id = %s", (race_id,))
+    race = cur.fetchone()
+    if not race:
+        raise HTTPException(404, "Race not found")
+
+    contest_id = int(race["problem_id"][:-1])
+    index = race["problem_id"][-1]
+    return await get_problem_statement(contest_id, index)
+
+def finalize_race(cur, race_id, winner, loser):
+    new_winner_elo, new_loser_elo = calculate_elo(winner["elo"], loser["elo"])
+    cur.execute("UPDATE races SET status='finished', winner_id=%s, ended_at=NOW() WHERE id=%s",
+                (winner["id"], race_id))
+    cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s",
+                (new_winner_elo, winner["id"]))
+    cur.execute("UPDATE users SET elo=%s, races_played=races_played+1 WHERE id=%s",
+                (new_loser_elo, loser["id"]))
+    cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s,%s,%s)",
+                (winner["id"], race_id, new_winner_elo))
+    cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s,%s,%s)",
+                (loser["id"], race_id, new_loser_elo))
+
+
+class SubmitLinkRequest(BaseModel):
+    link: str
+
+@app.post("/races/{race_id}/submit-link")
+async def submit_link(race_id: str, body: SubmitLinkRequest,
+                       user_id: str = Depends(get_current_user), conn=Depends(get_db)):
+    cur = conn.cursor()
+    cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
+    race = cur.fetchone()
+    if not race or race["status"] == "finished":
+        raise HTTPException(400, "Race not active")
+
+    parsed = parse_submission_link(body.link)
+    if not parsed:
+        raise HTTPException(400, "Invalid submission link format")
+    contest_id, submission_id = parsed
+
+    expected_problem = race["problem_id"]
+    if f"{contest_id}" not in expected_problem:
+        raise HTTPException(400, "Submission link doesn't match race problem")
+
+    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (user_id,))
+    me = cur.fetchone()
+    other_id = race["player2_id"] if race["player1_id"] == user_id else race["player1_id"]
+    cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (other_id,))
+    opponent = cur.fetchone()
+
+    sub = await get_submission_by_id(me["cf_handle"], submission_id)
+    if not sub:
+        raise HTTPException(400, "Submission nahi mila tumhare CF profile pe")
+    if sub["verdict"] != "OK":
+        raise HTTPException(400, f"Verdict abhi {sub['verdict']} hai, AC nahi")
+    if sub["creationTimeSeconds"] < int(race["started_at"].timestamp()):
+        raise HTTPException(400, "Yeh submission race shuru hone se pehle ka hai")
+
+    finalize_race(cur, race_id, winner=me, loser=opponent)
+    conn.commit()
+    return {"status": "won", "race_id": race_id}
