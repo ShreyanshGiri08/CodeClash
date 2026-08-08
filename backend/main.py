@@ -38,6 +38,24 @@ def get_current_user(creds: HTTPAuthorizationCredentials = Depends(security)):
     return decode_token(creds.credentials)
 
 
+def enrich_race(cur, race):
+    """Attach player handles (and winner handle) to a race dict for frontend display"""
+    race = dict(race)
+    cur.execute("SELECT cf_handle FROM users WHERE id = %s", (race["player1_id"],))
+    p1 = cur.fetchone()
+    cur.execute("SELECT cf_handle FROM users WHERE id = %s", (race["player2_id"],))
+    p2 = cur.fetchone()
+    race["player1_handle"] = p1["cf_handle"] if p1 else None
+    race["player2_handle"] = p2["cf_handle"] if p2 else None
+    if race["winner_id"]:
+        cur.execute("SELECT cf_handle FROM users WHERE id = %s", (race["winner_id"],))
+        w = cur.fetchone()
+        race["winner_handle"] = w["cf_handle"] if w else None
+    else:
+        race["winner_handle"] = None
+    return race
+
+
 # ---------- AUTH ----------
 
 class SignupRequest(BaseModel):
@@ -132,7 +150,7 @@ async def join_queue(user_id: str = Depends(get_current_user), conn=Depends(get_
         return {"status": "waiting", "message": "Added to queue, searching for opponent"}
 
     avg_rating = (elo + opponent["elo"]) // 2
-    target_rating = round(avg_rating / 100) * 100  # snap to nearest CF rating bucket
+    target_rating = round(avg_rating / 100) * 100
     problem = await get_random_problem(target_rating)
     problem_id = f"{problem['contestId']}{problem['index']}"
 
@@ -171,7 +189,7 @@ def get_race(race_id: str, conn=Depends(get_db)):
     race = cur.fetchone()
     if not race:
         raise HTTPException(404, "Race not found")
-    return race
+    return enrich_race(cur, race)
 
 
 @app.get("/races/{race_id}/problem")
@@ -205,7 +223,7 @@ async def check_race_status(race_id: str, conn=Depends(get_db)):
         raise HTTPException(404, "Race not found")
 
     if race["status"] == "finished":
-        return race
+        return enrich_race(cur, race)
 
     cur.execute("SELECT id, cf_handle, elo FROM users WHERE id = %s", (race["player1_id"],))
     p1 = cur.fetchone()
@@ -235,9 +253,9 @@ async def check_race_status(race_id: str, conn=Depends(get_db)):
         cur.execute("INSERT INTO rating_history (user_id, race_id, elo_after) VALUES (%s,%s,%s)", (loser["id"], race_id, new_l))
         conn.commit()
         cur.execute("SELECT * FROM races WHERE id = %s", (race_id,))
-        return cur.fetchone()
+        return enrich_race(cur, cur.fetchone())
 
-    return race
+    return enrich_race(cur, race)
 
 
 # ---------- LEADERBOARD ----------

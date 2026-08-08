@@ -14,7 +14,7 @@ export default function Signup() {
     try {
       const data = await signup(email, password);
       localStorage.setItem("token", data.token);
-      navigate("/dashboard");
+      navigate("/link-cf");   // changed from /dashboard
     } catch (err) {
       setError(err.message);
     }

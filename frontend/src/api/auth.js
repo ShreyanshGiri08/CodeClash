@@ -11,3 +11,11 @@ export function login(email, password) {
 export function getMe() {
   return apiCall("/me");
 }
+
+export function startCfVerification(handle) {
+  return apiCall(`/cf/start-verification?handle=${encodeURIComponent(handle)}`, { method: "POST" });
+}
+
+export function confirmCfVerification() {
+  return apiCall("/cf/confirm-verification", { method: "POST" });
+}

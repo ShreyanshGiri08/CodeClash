@@ -11,7 +11,15 @@ export default function Dashboard() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    getMe().then(setUser).catch(() => navigate("/login"));
+    getMe()
+      .then((data) => {
+        if (!data.cf_handle) {
+          navigate("/link-cf");
+        } else {
+          setUser(data);
+        }
+      })
+      .catch(() => navigate("/login"));
   }, []);
 
   async function handleQuickMatch() {
@@ -22,7 +30,6 @@ export default function Dashboard() {
       if (result.status === "matched") {
         navigate(`/race/${result.race_id}`);
       } else {
-        // "waiting" mila — thodi der baad phir try karo (simple retry loop)
         setWaitMsg("You're in queue — try again in a moment.");
         setMatching(false);
       }
