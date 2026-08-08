@@ -1,78 +1,752 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState, useRef } from "react";
+import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { getRace, checkRaceStatus, getProblem } from "../api/races";
+import { getRace, checkRaceStatus, getProblem, getVerdicts, forfeitRace } from "../api/races";
+import { useAuth } from "../context/AuthContext";
+import PageLayout from "../components/layout/PageLayout";
+
+import toast from "react-hot-toast";
+
+const AVATARS = {
+  avatar1: "⚡", avatar2: "🔥", avatar3: "💀", avatar4: "🎯",
+  avatar5: "🚀", avatar6: "⚔️", avatar7: "🏆", avatar8: "💎",
+  avatar9: "🐉", avatar10: "👾", avatar11: "🦊", avatar12: "🎮",
+};
+
+const VERDICT_COLORS = {
+  OK: "text-status-live",
+  WRONG_ANSWER: "text-status-error",
+  TIME_LIMIT_EXCEEDED: "text-status-warning",
+  RUNTIME_ERROR: "text-status-error",
+  COMPILATION_ERROR: "text-status-error",
+  MEMORY_LIMIT_EXCEEDED: "text-status-warning",
+};
+
+function formatTime(seconds) {
+  if (isNaN(seconds) || seconds < 0) return "00:00";
+  const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const s = String(Math.floor(seconds % 60)).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+function cleanCFMath(html) {
+  if (!html) return "";
+  let clean = html;
+  clean = clean.replace(/\\rightarrow/g, " → ");
+  clean = clean.replace(/\\leftarrow/g, " ← ");
+  clean = clean.replace(/\\Rightarrow/g, " ⇒ ");
+  clean = clean.replace(/\\Leftarrow/g, " ⇐ ");
+  clean = clean.replace(/\\to/g, " → ");
+  clean = clean.replace(/\\gt/g, ">");
+  clean = clean.replace(/\\ge/g, "≥");
+  clean = clean.replace(/\\le/g, "≤");
+  clean = clean.replace(/\\dots/g, "...");
+  clean = clean.replace(/\\cdot/g, "·");
+  clean = clean.replace(/\\ne/g, "≠");
+  clean = clean.replace(/\\times/g, "×");
+  clean = clean.replace(/\\a_\{([^}]+)\}/g, "a<sub>$1</sub>");
+  clean = clean.replace(/\\a_([a-zA-Z0-9]+)/g, "a<sub>$1</sub>");
+  clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, '<code class="font-mono text-accent bg-accent/15 border border-accent/40 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
+  clean = clean.replace(/\$\$(.*?)\$\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/30 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
+  return clean;
+}
+
+
+
+const CP_QUOTES = [
+  { quote: "Talk is cheap. Show me the code.", author: "Linus Torvalds" },
+  { quote: "First, solve the problem. Then, write the code.", author: "John Johnson" },
+  { quote: "Debugging is twice as hard as writing the code in the first place.", author: "Brian Kernighan" },
+  { quote: "Simplicity is prerequisite for reliability.", author: "Edsger W. Dijkstra" },
+  { quote: "Speed + Accuracy = Victory. Solve fast, claim your Elo!", author: "CodeClash Legend" },
+];
+
+
+
+// Client-side CF scraper — used when backend scraping fails
+async function fetchCFStatementClientSide(contestId, index) {
+  const cfUrl = `https://codeforces.com/contest/${contestId}/problem/${index}`;
+  const encoded = encodeURIComponent(cfUrl);
+  const proxies = [
+    `https://corsproxy.io/?${cfUrl}`,
+    `https://api.allorigins.win/get?url=${encoded}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
+  ];
+  for (const proxy of proxies) {
+    try {
+      const resp = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
+      if (!resp.ok) continue;
+      let html;
+      if (proxy.includes("allorigins")) {
+        const data = await resp.json();
+        html = data.contents;
+      } else {
+        html = await resp.text();
+      }
+      if (!html) continue;
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, "text/html");
+      const stDiv =
+        doc.querySelector(".problem-statement") ||
+        doc.querySelector(".problemstatement") ||
+        doc.querySelector(".ttypography");
+      if (stDiv) {
+        // Fix relative image URLs
+        stDiv.querySelectorAll("img").forEach((img) => {
+          if (img.src && !img.src.startsWith("http"))
+            img.src = "https://codeforces.com" + img.getAttribute("src");
+        });
+        // Remove CF header block (title, constraints)
+        const hdr = stDiv.querySelector(".header");
+        if (hdr) hdr.remove();
+        return stDiv.innerHTML;
+      }
+    } catch (_) { /* try next */ }
+  }
+  return null;
+}
 
 export default function Race() {
   const { raceId } = useParams();
+  const { user } = useAuth();
   const [race, setRace] = useState(null);
   const [problem, setProblem] = useState(null);
+  const [clientHtml, setClientHtml] = useState(null);  // client-side scraped HTML
+  const [clientScraping, setClientScraping] = useState(false);
+  const [verdicts, setVerdicts] = useState({ player1: [], player2: [] });
+  const [elapsed, setElapsed] = useState(0);
+  const [showResult, setShowResult] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [forfeiting, setForfeiting] = useState(false);
+  const [quoteIndex, setQuoteIndex] = useState(0);
+  const pollRef = useRef(null);
+  const timerRef = useRef(null);
+
+  const RACE_DURATION = 40 * 60; // 40 minutes
 
   useEffect(() => {
-    getRace(raceId).then(setRace);
-    getProblem(raceId).then(setProblem);
+    // Cycle CP quotes every 5 seconds while loading
+    const quoteInterval = setInterval(() => {
+      setQuoteIndex((prev) => (prev + 1) % CP_QUOTES.length);
+    }, 5000);
+    return () => clearInterval(quoteInterval);
+  }, []);
 
-    const interval = setInterval(async () => {
-      const updated = await checkRaceStatus(raceId);
+  const [wsConnected, setWsConnected] = useState(false);
+  const [opponentChecking, setOpponentChecking] = useState(false);
+  const wsRef = useRef(null);
+
+  useEffect(() => {
+    getRace(raceId).then((r) => {
+      if (r && r.id) {
+        setRace(r);
+        if (r.status === "finished") setShowResult(true);
+      }
+    }).catch((err) => {
+      console.error("Failed to load race:", err);
+    });
+    getProblem(raceId).then((p) => {
+      if (p) setProblem(p);
+    }).catch(() => {});
+
+    // WebSocket real-time connection setup
+    const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const backendHost = "localhost:8000";
+    const wsUrl = `${wsProtocol}//${backendHost}/races/ws/${raceId}`;
+
+    try {
+      const ws = new WebSocket(wsUrl);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        setWsConnected(true);
+        // Send heartbeat ping every 25s
+        const pingInterval = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "PING" }));
+          }
+        }, 25000);
+        ws.pingInterval = pingInterval;
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === "RACE_UPDATE" && data.race) {
+            setRace(data.race);
+            if (data.race.status === "finished") {
+              clearInterval(timerRef.current);
+              clearTimeout(pollRef.current);
+              setShowResult(true);
+            }
+          } else if (data.type === "OPPONENT_CHECKING") {
+            if (user && data.user_id !== user.id) {
+              setOpponentChecking(true);
+              toast("⚔ Opponent is checking their submission on Codeforces!", { icon: "⚡" });
+              setTimeout(() => setOpponentChecking(false), 4000);
+            }
+          }
+        } catch (e) {}
+      };
+
+      ws.onclose = () => {
+        setWsConnected(false);
+        if (ws.pingInterval) clearInterval(ws.pingInterval);
+      };
+
+      ws.onerror = () => {
+        setWsConnected(false);
+      };
+    } catch (e) {
+      setWsConnected(false);
+    }
+
+
+    // Start timer
+    timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+
+    // Poll verdicts & check race status every 5 seconds (serves as resilient fallback)
+    let checkCounter = 0;
+    async function pollVerdicts() {
+      try {
+        const v = await getVerdicts(raceId);
+        if (v && Array.isArray(v.player1) && Array.isArray(v.player2)) {
+          setVerdicts(v);
+        }
+        checkCounter++;
+        // Automatically trigger backend check every 2 polls (10s) if WS disconnected or backup check
+        if (checkCounter % 2 === 0) {
+          const updated = await checkRaceStatus(raceId);
+          if (updated && updated.id) {
+            setRace(updated);
+            if (updated.status === "finished") {
+              clearInterval(timerRef.current);
+              clearTimeout(pollRef.current);
+              setShowResult(true);
+              return;
+            }
+          }
+        }
+      } catch (e) { /* ignore */ }
+      pollRef.current = setTimeout(pollVerdicts, 5000);
+    }
+
+    pollVerdicts();
+
+    return () => {
+      clearInterval(timerRef.current);
+      clearTimeout(pollRef.current);
+      if (wsRef.current) {
+        if (wsRef.current.pingInterval) clearInterval(wsRef.current.pingInterval);
+        wsRef.current.close();
+      }
+    };
+  }, [raceId, user]);
+
+
+  // When backend scraping fails, try client-side scraping via CORS proxy
+  useEffect(() => {
+    if (problem && !problem.is_valid && !clientHtml && !clientScraping) {
+      let i = 0;
+      const pid = problem.url?.match(/contest\/(\d+)\/problem\/([A-Z0-9]+)/i);
+      if (pid) {
+        setClientScraping(true);
+        fetchCFStatementClientSide(pid[1], pid[2]).then((html) => {
+          if (html) setClientHtml(html);
+        }).finally(() => setClientScraping(false));
+      }
+    }
+  }, [problem]);
+
+  // Calculate real elapsed from race start in UTC
+  let realElapsed = elapsed;
+  const raceDurationSeconds = race?.duration_minutes ? race.duration_minutes * 60 : (40 * 60);
+
+  if (race?.started_at) {
+    const rawIso = String(race.started_at);
+    const isoString = (rawIso.endsWith("Z") || rawIso.includes("+")) ? rawIso : (rawIso + "Z");
+    const startedTime = new Date(isoString).getTime();
+    if (!isNaN(startedTime)) {
+      let endTime = Date.now();
+      if (race?.ended_at) {
+        const endIso = String(race.ended_at);
+        const endIsoString = (endIso.endsWith("Z") || endIso.includes("+")) ? endIso : (endIso + "Z");
+        const parsedEndTime = new Date(endIsoString).getTime();
+        if (!isNaN(parsedEndTime)) endTime = parsedEndTime;
+      }
+      const diff = Math.floor((endTime - startedTime) / 1000);
+      realElapsed = Math.max(0, diff);
+    }
+  }
+
+  const remaining = Math.max(0, raceDurationSeconds - realElapsed);
+  const finished = race?.status === "finished" || remaining <= 0;
+
+  // Freeze elapsed timer once finished or expired (do not count infinitely past match duration)
+  if (finished) {
+    realElapsed = Math.min(realElapsed, raceDurationSeconds);
+  }
+
+
+
+
+  // Determine which player is "me"
+  const isP1 = user && race && user.id === race.player1_id;
+
+  async function handleCheckNow() {
+    if (checking) return;
+    setChecking(true);
+
+    let secondsLeft = 30;
+    const toastId = toast.loading(`Searching Codeforces for your submission... (${secondsLeft}s remaining)`);
+
+    const timerInterval = setInterval(() => {
+      secondsLeft = Math.max(0, secondsLeft - 3);
+      if (secondsLeft > 0) {
+        toast.loading(`Searching Codeforces for your submission... (${secondsLeft}s remaining)`, { id: toastId });
+      } else {
+        toast.loading(`Finalizing search on Codeforces...`, { id: toastId });
+      }
+    }, 3000);
+
+    let foundAccepted = false;
+
+    try {
+      for (let attempt = 0; attempt < 10; attempt++) {
+        try {
+          const updated = await checkRaceStatus(raceId);
+          if (updated && updated.id) {
+            setRace(updated);
+            if (updated.status === "finished") {
+              foundAccepted = true;
+              setShowResult(true);
+              break;
+            }
+          }
+          const v = await getVerdicts(raceId);
+          if (v && Array.isArray(v.player1)) setVerdicts(v);
+        } catch (e) {
+          /* continue searching */
+        }
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+      }
+    } finally {
+      clearInterval(timerInterval);
+      toast.dismiss(toastId);
+      setChecking(false);
+    }
+
+    if (foundAccepted) {
+      toast.success("🎉 Accepted submission detected! Victory!", { duration: 6000 });
+    } else {
+      toast.error("Oops! Couldn't find an Accepted submission on Codeforces yet. Make sure you submitted under your handle and try again!", { duration: 7000 });
+    }
+  }
+
+
+  async function handleForfeit() {
+    if (!window.confirm("Are you sure you want to forfeit? Your opponent will win.")) return;
+    setForfeiting(true);
+    try {
+      const updated = await forfeitRace(raceId);
       setRace(updated);
-      if (updated.status === "finished") clearInterval(interval);
-    }, 4000);
+      setShowResult(true);
+      clearInterval(timerRef.current);
+      clearTimeout(pollRef.current);
+      toast.error("You forfeited the race.");
+    } catch (e) {
+      toast.error(e.message || "Failed to forfeit");
+    }
+    setForfeiting(false);
+  }
 
-    return () => clearInterval(interval);
-  }, [raceId]);
 
-  if (!race) return <div className="min-h-screen bg-black" />;
+  if (!race) {
+    return (
+      <PageLayout hideFooter>
+        <div className="flex flex-col items-center justify-center min-h-[80vh] space-y-4 px-4 text-center">
+          <div className="w-12 h-12 border-4 border-accent border-t-transparent rounded-full animate-spin" />
+          <p className="font-mono text-sm text-accent font-bold animate-pulse">Initializing Race Room...</p>
+        </div>
+      </PageLayout>
+    );
+  }
 
-  const finished = race.status === "finished";
+  // Parse problem for CF link
+  const problemId = race.problem_id;
+  let cfContestId = "", cfIndex = "";
+  if (problemId) {
+    let i = 0;
+    while (i < problemId.length && problemId[i] >= "0" && problemId[i] <= "9") i++;
+    cfContestId = problemId.substring(0, i);
+    cfIndex = problemId.substring(i);
+  }
+
+  const currentQuote = CP_QUOTES[quoteIndex];
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center justify-center font-mono-display p-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-2xl space-y-6"
-      >
-        {problem && (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 text-left text-sm max-h-72 overflow-y-auto">
-            <h2 className="text-xl font-bold mb-2 text-yellow-400">{problem.title}</h2>
-            <div dangerouslySetInnerHTML={{ __html: problem.html }} />
-            <a href={problem.url} target="_blank" rel="noreferrer" className="text-yellow-400 underline text-xs block mt-2">
-              Open on Codeforces →
-            </a>
-          </div>
-        )}
+    <PageLayout hideFooter>
+      {/* Background Cyber Coder Setup Wallpaper Layer with Glassglow & Motion */}
+      <div className="relative min-h-[calc(100vh-4rem)] bg-transparent overflow-hidden">
+        {/* Animated Neon Aura Motion Spheres */}
+        <motion.div
+          animate={{
+            scale: [1, 1.3, 1],
+            x: [0, 50, 0],
+            y: [0, -50, 0],
+          }}
+          transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -top-24 -left-24 w-[450px] h-[450px] bg-purple-600/30 rounded-full blur-[130px] pointer-events-none"
+        />
 
-        <div className="w-full bg-zinc-900 border border-zinc-800 rounded-lg overflow-hidden">
-          <div className="flex justify-between items-center px-5 py-3 border-b border-zinc-800">
-            <span className="text-zinc-500 text-sm">// RACE · {race.problem_id}</span>
-            <AnimatePresence mode="wait">
-              <motion.span
-                key={finished ? "done" : "live"}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className={finished ? "text-zinc-400" : "text-blue-400"}
-              >
-                ● {finished ? "FINISHED" : "LIVE"}
-              </motion.span>
-            </AnimatePresence>
-          </div>
+        <motion.div
+          animate={{
+            scale: [1, 1.35, 1],
+            x: [0, -60, 0],
+            y: [0, 60, 0],
+          }}
+          transition={{ duration: 15, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute -bottom-24 -right-24 w-[550px] h-[550px] bg-cyan-500/35 rounded-full blur-[150px] pointer-events-none"
+        />
+        <motion.div
+          animate={{ scale: [1, 1.25, 1] }}
+          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[650px] h-[650px] bg-accent/20 rounded-full blur-[170px] pointer-events-none"
+        />
 
-          <div className="p-8 text-center">
-            {!finished ? (
-              <>
-               <p className="text-zinc-500 tracking-widest mb-4">// JUDGING IN PROGRESS</p>
-               <p className="text-zinc-400">Solve the problem on Codeforces and submit.</p>
-              <p className="text-yellow-400 mt-2">Checking for a verdict every 4 seconds...</p>
-              </>
-            ) : (
-              <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }}>
-                <p className="text-3xl font-bold text-yellow-400 mb-2">🏆 RACE OVER</p>
-                <p className="text-zinc-400">Winner: {race.winner_id}</p>
-              </motion.div>
-            )}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-black/35 to-black/55 pointer-events-none" />
+
+
+        <div className="relative max-w-7xl mx-auto px-4 py-4 z-10">
+
+          <div className="flex flex-col lg:flex-row gap-5 min-h-[calc(100vh-6.5rem)]">
+
+            {/* ── Left: Problem Statement Glass Panel ──────────────── */}
+            <div className="lg:w-[48%] bg-black/80 backdrop-blur-2xl border border-accent/40 rounded-2xl overflow-hidden flex flex-col shadow-[0_10px_50px_rgba(0,0,0,0.8)]">
+
+              <div className="px-5 py-3.5 bg-bg-elevated/80 border-b border-border/80 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+                  <span className="font-mono text-xs font-extrabold text-accent tracking-wider">// PROBLEM STATEMENT</span>
+                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${wsConnected ? 'bg-status-live/15 border-status-live/40 text-status-live' : 'bg-status-warning/15 border-status-warning/40 text-status-warning'}`}>
+                    {wsConnected ? '⚡ WS LIVE' : '📡 POLLING'}
+                  </span>
+                </div>
+                {problem?.url && (
+                  <a
+                    href={problem.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-mono text-xs bg-accent text-black font-extrabold px-3 py-1.5 rounded-lg hover:shadow-[0_0_15px_rgba(255,230,12,0.5)] transition-all flex items-center gap-1 cursor-pointer"
+                  >
+                    ↗ CODEFORCES LINK
+                  </a>
+                )}
+              </div>
+
+
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
+                {problem ? (
+                  // Either backend scraped it (is_valid=true) OR client scraped it, OR still trying
+                  (problem.is_valid || clientHtml) ? (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
+                    >
+                      <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3 mb-5">
+                        <h2 className="text-xl font-extrabold text-accent tracking-tight">{problem.title}</h2>
+                        <span className="font-mono text-xs px-3 py-1 rounded-full bg-accent/15 border border-accent/40 text-accent font-extrabold shadow-sm">
+                          {cfContestId}{cfIndex}
+                        </span>
+                      </div>
+                      <div
+                        className="problem-statement text-sm leading-relaxed"
+                        dangerouslySetInnerHTML={{ __html: cleanCFMath(problem.is_valid ? problem.html : clientHtml) }}
+                      />
+                    </motion.div>
+                  ) : clientScraping ? (
+                    /* Client-side scraping in progress */
+                    <div className="py-12 space-y-5 text-center">
+                      <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
+                      <p className="font-mono text-xs text-accent font-bold animate-pulse">// FETCHING PROBLEM STATEMENT...</p>
+                      <p className="text-text-dim text-xs">Connecting to Codeforces via proxy...</p>
+                    </div>
+                  ) : (
+                    /* Both backend and client scraping failed — show direct link */
+                    <div className="py-10 space-y-5 text-center">
+                      <div className="text-4xl">⚠️</div>
+                      <p className="font-mono text-sm font-bold text-accent">{problem.title}</p>
+                      <p className="text-text-muted text-xs">Statement could not be loaded automatically.<br/>Open directly on Codeforces to view and submit:</p>
+                      <a
+                        href={problem.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-2 font-mono text-xs bg-accent text-black font-extrabold px-6 py-3.5 rounded-lg hover:opacity-90 transition-opacity shadow-lg"
+                      >
+                        ↗ OPEN {cfContestId}{cfIndex} ON CODEFORCES
+                      </a>
+                    </div>
+                  )
+                ) : (
+
+                  /* Animated CP Quote Loader Card */
+                  <div className="py-8 space-y-6 text-center">
+                    <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
+                    <div className="p-6 rounded-2xl bg-bg-elevated/60 border border-accent/30 shadow-inner max-w-md mx-auto space-y-2">
+                      <p className="font-mono text-xs text-accent font-bold tracking-widest">// CP WISDOM</p>
+                      <p className="text-text-primary text-sm font-medium italic leading-relaxed">
+                        "{currentQuote.quote}"
+                      </p>
+                      <p className="text-text-dim text-xs font-mono font-bold">— {currentQuote.author}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+
+            {/* ── Right: Race Controls & Submissions Radar Panel ──────────────── */}
+            <div className="lg:w-[52%] flex flex-col gap-4">
+
+              {/* TOP ACTION BAR — Sleek, Prominent, Front & Center! */}
+              {!finished && (
+                <div className="bg-bg-card/95 backdrop-blur-2xl border border-accent/40 rounded-2xl p-4 shadow-[0_0_30px_rgba(255,230,12,0.1)] space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono font-bold text-text-dim px-1">
+                    <span className="flex items-center gap-1.5 text-accent">
+                      <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                      RACE ACTIONS
+                    </span>
+                    <button
+                      onClick={handleForfeit}
+                      disabled={forfeiting}
+                      className="text-status-error/80 hover:text-status-error hover:underline transition-all cursor-pointer font-normal text-[11px]"
+                    >
+                      🏳 Forfeit Match
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <a
+                      href={`https://codeforces.com/contest/${cfContestId}/problem/${cfIndex}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="w-full"
+                    >
+                      <button className="w-full font-mono text-xs font-black bg-accent text-black py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(255,230,12,0.5)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg">
+                        ↗ SUBMIT SOLUTION ON CF
+                      </button>
+                    </a>
+
+                    <button
+                      onClick={handleCheckNow}
+                      disabled={checking}
+                      className="w-full font-mono text-xs font-extrabold bg-bg-elevated/90 border border-accent/50 text-accent py-3.5 rounded-xl hover:bg-accent/15 hover:border-accent hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer shadow-lg"
+                    >
+                      {checking ? (
+                        <>
+                          <span className="w-3.5 h-3.5 border-2 border-accent border-t-transparent rounded-full animate-spin" />
+                          SEARCHING SUBMISSION...
+                        </>
+                      ) : (
+                        <>✓ I SUBMITTED, CHECK NOW</>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Race Clock + Matchup Header */}
+              <div className="bg-bg-card/90 backdrop-blur-2xl border border-border/80 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="flex justify-between items-center px-5 py-3 bg-bg-elevated/70 border-b border-border/80">
+                  <span className="font-mono text-xs font-bold text-text-dim tracking-wider">// RACE CLOCK & MATCHUP</span>
+                  <span className="font-mono text-xs flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${finished ? "bg-text-muted" : "bg-status-live animate-pulse"}`} />
+                    <span className={`font-extrabold ${finished ? "text-text-muted" : "text-status-live"}`}>
+                      {finished ? "FINISHED" : "MATCH IN PROGRESS"}
+                    </span>
+                  </span>
+                </div>
+
+                <div className="p-5">
+                  {/* Digital Clock display */}
+                  <div className="flex items-center justify-between bg-bg-input/70 border border-border/60 p-4 rounded-xl shadow-inner">
+                    <div>
+                      <p className="font-mono text-xs text-text-dim mb-1 font-bold">⏱ REMAINING TIME</p>
+                      <p className="font-mono text-4xl sm:text-5xl font-black text-text-primary tracking-tight">
+                        {finished ? "00:00" : formatTime(remaining)}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono text-xs text-text-dim mb-1 font-bold">ELAPSED</p>
+                      <p className="font-mono text-xl font-bold text-accent">
+                        {formatTime(realElapsed)}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Player Cards */}
+                  <div className="grid grid-cols-2 gap-3 pt-3">
+                    <div className="p-3 rounded-xl bg-accent/10 border border-accent/30 flex items-center gap-3">
+                      <span className="text-xl">⚡</span>
+                      <div className="overflow-hidden">
+                        <p className="text-[10px] text-text-muted font-mono font-bold tracking-wider">YOU</p>
+                        <p className="font-mono font-extrabold text-xs text-accent truncate">
+                          {isP1 ? race.player1_handle : race.player2_handle}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="p-3 rounded-xl bg-status-error/10 border border-status-error/30 flex items-center gap-3">
+                      <span className="text-xl">⚔️</span>
+                      <div className="overflow-hidden">
+                        <p className="text-[10px] text-text-muted font-mono font-bold tracking-wider">OPPONENT</p>
+                        <p className="font-mono font-extrabold text-xs text-status-error truncate">
+                          {isP1 ? race.player2_handle : race.player1_handle}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3rd: Full-Width Live Submission Stream Panel */}
+              <div className="bg-black/80 backdrop-blur-2xl border border-border/80 rounded-2xl overflow-hidden shadow-2xl flex-1 flex flex-col">
+                <div className="flex justify-between items-center px-5 py-3 bg-bg-elevated/70 border-b border-border/80">
+                  <span className="font-mono text-xs font-bold text-text-dim tracking-wider">// LIVE SUBMISSION STREAM</span>
+                  <span className="font-mono text-xs text-status-live flex items-center gap-1.5 font-bold">
+                    <span className="w-2 h-2 rounded-full bg-status-live animate-ping" />
+                    WATCHING CODEFORCES
+                  </span>
+                </div>
+
+                <div className="p-4 flex-1 overflow-y-auto max-h-56 custom-scrollbar space-y-4">
+                  {/* My submissions */}
+                  <div>
+                    <p className="font-mono text-[11px] font-extrabold text-accent mb-2 tracking-wider flex items-center gap-1.5">
+                      <span>⚡</span> YOUR SUBMISSIONS
+                    </p>
+                    {((isP1 ? verdicts?.player1 : verdicts?.player2) || []).length === 0 ? (
+                      <div className="p-3 rounded-xl bg-bg-input/40 border border-border/40 text-text-dim text-xs font-mono">
+                        No submissions recorded yet. Submit on Codeforces!
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {((isP1 ? verdicts?.player1 : verdicts?.player2) || []).map((v, i) => (
+                          <div key={i} className="flex items-center justify-between bg-bg-elevated/80 border border-border/60 rounded-xl px-4 py-2 font-mono text-xs shadow-sm">
+                            <span className={`font-bold ${VERDICT_COLORS[v.verdict] || "text-text-muted"}`}>
+                              {v.verdict === "OK" ? "✓ ACCEPTED" : v.verdict}
+                            </span>
+                            <span className="text-text-dim">{v.language}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Opponent submissions */}
+                  <div>
+                    <p className="font-mono text-[11px] font-extrabold text-status-error mb-2 tracking-wider flex items-center gap-1.5">
+                      <span>⚔️</span> OPPONENT SUBMISSIONS
+                    </p>
+                    {((isP1 ? verdicts?.player2 : verdicts?.player1) || []).length === 0 ? (
+                      <div className="p-3 rounded-xl bg-bg-input/40 border border-border/40 text-text-dim text-xs font-mono">
+                        No submissions recorded yet.
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {((isP1 ? verdicts?.player2 : verdicts?.player1) || []).map((v, i) => (
+                          <div key={i} className="flex items-center justify-between bg-bg-elevated/80 border border-border/60 rounded-xl px-4 py-2 font-mono text-xs shadow-sm">
+                            <span className={`font-bold ${VERDICT_COLORS[v.verdict] || "text-text-muted"}`}>
+                              {v.verdict === "OK" ? "✓ ACCEPTED" : v.verdict}
+                            </span>
+                            <span className="text-text-dim">{v.language}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+
+
+              {/* Victory / Result Screen Modal */}
+              <AnimatePresence>
+                {showResult && finished && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-bg-card/95 backdrop-blur-2xl border-2 border-accent rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(255,230,12,0.2)]"
+                  >
+                    <div className="flex justify-between items-center px-5 py-3.5 bg-accent/10 border-b border-accent/30">
+                      <span className="font-mono text-xs font-black text-accent tracking-wider">// RACE MATCH RESULT</span>
+                      <span className="text-lg">🏆</span>
+                    </div>
+                    <div className="p-6 text-center">
+                      <span className={`inline-block font-mono text-base font-black px-6 py-2 rounded-xl mb-4 shadow-lg ${
+                        race.winner_id === user?.id
+                          ? "bg-status-live text-black font-extrabold shadow-status-live/30"
+                          : race.winner_id
+                          ? "bg-status-error text-white font-extrabold shadow-status-error/30"
+                          : "bg-status-warning text-black font-extrabold shadow-status-warning/30"
+                      }`}>
+                        {race.winner_id === user?.id
+                          ? "🎉 VICTORY!"
+                          : race.winner_id
+                          ? "💀 DEFEAT"
+                          : "⏱ TIME EXPIRED — DRAW"}
+                      </span>
+
+                      {!race.winner_id && (
+                        <p className="text-text-muted text-xs mb-4">
+                          Neither player submitted an Accepted solution within the 40-minute limit.
+                        </p>
+                      )}
+
+                      <div className="flex items-center justify-center gap-10 mt-5 p-4 rounded-xl bg-bg-elevated/70 border border-border/60">
+                        <div className="text-center">
+                          <p className="text-sm font-extrabold text-text-primary">{isP1 ? race.player1_handle : race.player2_handle}</p>
+                          <p className={`font-mono text-xl font-extrabold ${
+                            (isP1 ? (race.p1_elo_after - race.p1_elo_before) : (race.p2_elo_after - race.p2_elo_before)) > 0
+                              ? "text-status-live" : (race.p1_elo_after === race.p1_elo_before ? "text-text-muted" : "text-status-error")
+                          }`}>
+                            {isP1
+                              ? (race.p1_elo_after && race.p1_elo_before ? `${race.p1_elo_after - race.p1_elo_before > 0 ? "+" : ""}${race.p1_elo_after - race.p1_elo_before}` : "+0")
+                              : (race.p2_elo_after && race.p2_elo_before ? `${race.p2_elo_after - race.p2_elo_before > 0 ? "+" : ""}${race.p2_elo_after - race.p2_elo_before}` : "+0")
+                            }
+                          </p>
+                        </div>
+                        <div className="text-center">
+                          <p className="text-sm font-extrabold text-text-primary">{isP1 ? race.player2_handle : race.player1_handle}</p>
+                          <p className={`font-mono text-xl font-extrabold ${
+                            (isP1 ? (race.p2_elo_after - race.p2_elo_before) : (race.p1_elo_after - race.p1_elo_before)) > 0
+                              ? "text-status-live" : (race.p1_elo_after === race.p1_elo_before ? "text-text-muted" : "text-status-error")
+                          }`}>
+                            {isP1
+                              ? (race.p2_elo_after && race.p2_elo_before ? `${race.p2_elo_after - race.p2_elo_before > 0 ? "+" : ""}${race.p2_elo_after - race.p2_elo_before}` : "+0")
+                              : (race.p1_elo_after && race.p1_elo_before ? `${race.p1_elo_after - race.p1_elo_before > 0 ? "+" : ""}${race.p1_elo_after - race.p1_elo_before}` : "+0")
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      <Link to="/dashboard">
+                        <button className="mt-6 font-mono text-sm bg-accent text-black font-extrabold px-8 py-3 rounded-xl hover:scale-105 hover:shadow-[0_0_20px_rgba(255,230,12,0.4)] transition-all cursor-pointer">
+                          Back to Dashboard
+                        </button>
+                      </Link>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+            </div>
           </div>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }

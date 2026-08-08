@@ -1,12 +1,405 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&display=swap');
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Inter:wght@400;600;700&display=swap');
 
-body {
-  margin: 0;
-  font-family: 'Inter', sans-serif;
-  background: #0a0a0a;
+/* ── CodeClash Design System ──────────────────────────────────
+   Inspired by cph2h's dark, high-contrast, techy aesthetic.
+   Uses a near-black base with neon yellow accents.
+*/
+
+@theme {
+  --color-bg-primary: #07070b;
+  --color-bg-card: #111116;
+  --color-bg-elevated: #1a1a22;
+  --color-bg-input: #16161e;
+  --color-border: rgba(224, 224, 211, 0.12);
+  --color-border-accent: rgba(255, 230, 12, 0.3);
+  --color-border-bright: rgba(224, 224, 211, 0.25);
+  --color-accent: #ffe60c;
+  --color-accent-dim: #bfad0a;
+  --color-text-primary: #e0e0d3;
+  --color-text-muted: #6b6b5e;
+  --color-text-dim: #3a3a32;
+  --color-status-live: #22c55e;
+  --color-status-error: #ef4444;
+  --color-status-warning: #f59e0b;
+  --color-win: #22c55e;
+  --color-loss: #ef4444;
 }
 
-.font-mono-display {
+/* ── Base ─────────────────────────────────────────────────── */
+body {
+  margin: 0;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  background-color: var(--color-bg-primary);
+  background-image: 
+    radial-gradient(ellipse at 50% 0%, rgba(255, 230, 12, 0.08) 0%, rgba(7, 7, 11, 0.98) 75%),
+    linear-gradient(180deg, #07070b 0%, #0d0d14 100%);
+  color: var(--color-text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Glassmorphism backdrop blur on all cards in dark mode */
+[class*="bg-black/"],
+[class*="bg-bg-card"],
+[class*="bg-bg-elevated"] {
+  backdrop-filter: blur(16px);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+
+/* ── Light Mode Override System ─────────────────────────────── */
+html.light {
+  /* Warm slate-indigo background — NOT white, easy on the eyes */
+  --color-bg-primary: #1e1b2e;        /* deep indigo-slate base — keeps image visible */
+  --color-bg-card: rgba(255,255,255,0.12);
+  --color-bg-elevated: rgba(255,255,255,0.18);
+  --color-bg-input: rgba(255,255,255,0.14);
+
+  /* Borders — slightly visible on frosted glass */
+  --color-border: rgba(255,255,255,0.18);
+  --color-border-accent: rgba(129,140,248,0.6);
+  --color-border-bright: rgba(255,255,255,0.3);
+
+  /* Accent — vibrant indigo/violet (looks great on semi-transparent panels) */
+  --color-accent: #818cf8;
+  --color-accent-dim: #6366f1;
+
+  /* Text — white-ish for readability on dark/image bg */
+  --color-text-primary: #f1f5f9;
+  --color-text-muted: #cbd5e1;
+  --color-text-dim: #94a3b8;
+
+  /* Status colours */
+  --color-status-live: #34d399;
+  --color-status-error: #f87171;
+  --color-status-warning: #fbbf24;
+  --color-win: #34d399;
+  --color-loss: #f87171;
+}
+
+/* Full wall-to-wall Workstation Setup Background Image for Light Mode */
+html.light body {
+  background-image: 
+    linear-gradient(180deg, rgba(30, 27, 46, 0.60) 0%, rgba(30, 27, 46, 0.78) 100%),
+    url('/user_coder_setup_1786206355193.png'),
+    url('/coder_bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+
+
+/* Skeleton loader animation */
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+.skeleton-shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.8s infinite ease-in-out;
+}
+
+
+/* Frosted glass overlay on all card panels in light mode */
+html.light [class*="bg-black/"] {
+  background-color: rgba(30, 27, 46, 0.65) !important;
+  backdrop-filter: blur(12px);
+}
+html.light [class*="bg-bg-card"],
+html.light [class*="bg-bg-card/"] {
+  background-color: rgba(255, 255, 255, 0.10) !important;
+  backdrop-filter: blur(14px);
+  border-color: rgba(255,255,255,0.18) !important;
+}
+html.light [class*="bg-bg-elevated"],
+html.light [class*="bg-bg-elevated/"] {
+  background-color: rgba(255, 255, 255, 0.14) !important;
+  backdrop-filter: blur(8px);
+}
+html.light [class*="bg-bg-input"],
+html.light [class*="bg-bg-input/"] {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+html.light [class*="bg-bg-primary"],
+html.light [class*="bg-bg-primary/"] {
+  background-color: rgba(30, 27, 46, 0.5) !important;
+}
+
+/* Problem statement stays readable */
+html.light .problem-statement,
+html.light .problem-statement div,
+html.light .problem-statement p,
+html.light .problem-statement span,
+html.light .problem-statement li {
+  color: #f1f5f9 !important;
+}
+html.light .problem-statement pre {
+  background: rgba(255,255,255,0.1) !important;
+  border-color: rgba(255,255,255,0.2) !important;
+  color: #f1f5f9 !important;
+}
+html.light .problem-statement .tex-font-style-tt,
+html.light .problem-statement code {
+  background: rgba(129,140,248,0.2) !important;
+  color: #818cf8 !important;
+  border-color: rgba(129,140,248,0.3) !important;
+}
+
+/* Ensure gradients don't wash out the image */
+html.light [class*="from-black/"] { --tw-gradient-from: rgba(30,27,46,0.55) !important; }
+html.light [class*="via-black/"]  { --tw-gradient-via: rgba(30,27,46,0.4) !important; }
+html.light [class*="to-black/"]   { --tw-gradient-to: rgba(30,27,46,0.55) !important; }
+
+/* Accent buttons */
+html.light [class*="bg-accent"] {
+  background-color: #818cf8 !important;
+  color: #0f0e17 !important;
+}
+
+/* Neon glow spheres in light mode — use indigo/violet */
+html.light [class*="bg-purple-600/"] { background-color: rgba(99,102,241,0.35) !important; }
+html.light [class*="bg-cyan-500/"]   { background-color: rgba(99,102,241,0.30) !important; }
+
+
+/* ── Scrollbar ────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-dim);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* ── Typography ───────────────────────────────────────────── */
+.font-mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
+}
+
+/* ── Glow Effects ─────────────────────────────────────────── */
+.glow-yellow {
+  box-shadow: 0 0 22px -8px rgba(255, 230, 12, 0.5);
+}
+
+.glow-yellow-hover:hover {
+  box-shadow: 0 0 28px -6px rgba(255, 230, 12, 0.6);
+}
+
+.text-glow {
+  text-shadow: 0 0 40px rgba(255, 230, 12, 0.4),
+               0 0 80px rgba(255, 230, 12, 0.2);
+}
+
+.text-glow-strong {
+  text-shadow: 0 0 20px rgba(255, 230, 12, 0.6),
+               0 0 40px rgba(255, 230, 12, 0.4),
+               0 0 80px rgba(255, 230, 12, 0.2);
+}
+
+/* ── Gradient Backgrounds ─────────────────────────────────── */
+.bg-gradient-dark {
+  background: linear-gradient(180deg, var(--color-bg-primary) 0%, #0d0d14 100%);
+}
+
+.bg-gradient-card {
+  background: linear-gradient(135deg, var(--color-bg-card) 0%, #0e0e15 100%);
+}
+
+/* ── Animated Border ──────────────────────────────────────── */
+.border-glow {
+  border: 1px solid var(--color-border-accent);
+  transition: border-color 0.3s ease;
+}
+
+.border-glow:hover {
+  border-color: var(--color-accent);
+}
+
+/* ── Codeforces Problem Statement Styles ──────────────────── */
+.problem-statement {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--color-text-primary) !important;
+}
+
+.problem-statement,
+.problem-statement div,
+.problem-statement p,
+.problem-statement span,
+.problem-statement li {
+  color: var(--color-text-primary) !important;
+}
+
+.problem-statement .header {
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+.problem-statement .header .title {
+  font-size: 1.5rem !important;
+  font-weight: 800 !important;
+  margin-bottom: 10px;
+  color: var(--color-accent) !important;
+}
+
+.problem-statement .property-title {
+  color: var(--color-text-muted) !important;
+  font-weight: 600 !important;
   font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.problem-statement .header > div {
+  font-size: 12px;
+  color: var(--color-text-muted) !important;
+  margin-bottom: 4px;
+}
+
+.problem-statement .section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  color: var(--color-accent) !important;
+  margin: 20px 0 8px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px dashed var(--color-border-accent);
+  padding-bottom: 4px;
+}
+
+.problem-statement .input-specification,
+.problem-statement .output-specification,
+.problem-statement .sample-tests {
+  margin: 16px 0;
+}
+
+.problem-statement pre {
+  background: var(--color-bg-input) !important;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-bright) !important;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--color-accent) !important;
+  margin: 8px 0;
+}
+
+.problem-statement .sample-test {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.problem-statement .sample-test .input,
+.problem-statement .sample-test .output {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.problem-statement .sample-test .title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted) !important;
+  margin-bottom: 6px;
+}
+
+.problem-statement .tex-font-style-tt,
+.problem-statement code {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--color-bg-elevated);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--color-accent) !important;
+  border: 1px solid var(--color-border);
+}
+
+.problem-statement table {
+  border-collapse: collapse;
+  margin: 12px 0;
+  width: 100%;
+}
+
+.problem-statement td, .problem-statement th {
+  border: 1px solid var(--color-border);
+  padding: 8px 12px;
+}
+
+
+/* ── Marquee Animation ────────────────────────────────────── */
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+}
+
+/* ── Pulse Animation for Live Dot ─────────────────────────── */
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+/* ── Skeleton Loading ─────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-elevated) 25%,
+    var(--color-bg-card) 50%,
+    var(--color-bg-elevated) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* ── Focus styles ─────────────────────────────────────────── */
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
