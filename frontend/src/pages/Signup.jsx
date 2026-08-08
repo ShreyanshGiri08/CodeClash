@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { signup } from "../api/auth";
 
 export default function Signup() {
@@ -38,6 +38,10 @@ export default function Signup() {
         <button className="w-full bg-yellow-400 text-black font-bold p-2 rounded">
           Sign up
         </button>
+        <p className="text-zinc-500 text-sm text-center">
+          Already have an account?{" "}
+          <Link to="/login" className="text-yellow-400 underline">Login</Link>
+        </p>
       </form>
     </div>
   );
