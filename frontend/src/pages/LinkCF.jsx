@@ -77,8 +77,9 @@ export default function LinkCF() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-bg-card border border-border rounded-lg p-6 sm:p-8"
+          className="bg-[#0b0b10]/90 backdrop-blur-2xl border border-accent/30 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6"
         >
+
           {error && (
             <motion.p
               initial={{ opacity: 0 }}
@@ -92,14 +93,15 @@ export default function LinkCF() {
           {step === "enter-handle" ? (
             <form onSubmit={handleStart} className="space-y-5">
               <div>
-                <label className="text-sm font-medium block mb-1.5">Codeforces Handle</label>
+                <label className="text-xs font-mono font-bold text-accent tracking-wider block mb-2">// CODEFORCES HANDLE</label>
                 <input
                   placeholder="Your CF handle (e.g., tourist)"
                   value={handle}
                   onChange={(e) => setHandle(e.target.value)}
                   required
-                  className="w-full px-3 py-2.5 rounded-lg bg-bg-input border border-border text-sm text-text-primary placeholder:text-text-dim font-mono"
+                  className="w-full px-4 py-3 rounded-xl bg-black/70 border border-border/80 text-sm font-mono text-white placeholder:text-text-dim outline-none focus:border-accent transition-all"
                 />
+
               </div>
               <motion.button
                 whileHover={{ scale: 1.01 }}
