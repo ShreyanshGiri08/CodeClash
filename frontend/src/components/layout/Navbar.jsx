@@ -40,6 +40,22 @@ export default function Navbar() {
             CODECLASH <span className="text-accent text-xs">⚡ RACE</span>
           </Link>
           <div className="flex items-center gap-3">
+            {/* Sound SFX Toggle */}
+            <button
+              onClick={toggleMute}
+              data-sound="none"
+              className={`px-3 py-1.5 rounded-full border transition-all text-xs font-mono font-extrabold flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                !muted
+                  ? "bg-accent/20 border-accent/60 text-accent shadow-[0_0_12px_rgba(255,230,12,0.3)]"
+                  : "bg-bg-elevated border-border text-text-dim hover:text-text-primary"
+              }`}
+              title={muted ? "Unmute Cyber SFX Sound" : "Mute Cyber SFX Sound"}
+            >
+              <span>{!muted ? "🔊" : "🔇"}</span>
+              <span className="hidden sm:inline">{!muted ? "SFX ON" : "MUTED"}</span>
+            </button>
+
+            {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
               className="px-3 py-1.5 rounded-full bg-bg-elevated border border-border hover:border-accent text-text-primary transition-all text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer shadow-sm"
@@ -52,6 +68,7 @@ export default function Navbar() {
       </nav>
     );
   }
+
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-xl border-b border-border/80 shadow-lg">
@@ -89,6 +106,7 @@ export default function Navbar() {
           {/* Sound SFX Toggle */}
           <button
             onClick={toggleMute}
+            data-sound="none"
             className={`px-3 py-1.5 rounded-full border transition-all text-xs font-mono font-extrabold flex items-center gap-1.5 cursor-pointer shadow-sm ${
               !muted
                 ? "bg-accent/20 border-accent/60 text-accent shadow-[0_0_12px_rgba(255,230,12,0.3)]"
@@ -99,6 +117,7 @@ export default function Navbar() {
             <span>{!muted ? "🔊" : "🔇"}</span>
             <span className="hidden sm:inline">{!muted ? "SFX ON" : "MUTED"}</span>
           </button>
+
 
 
           {/* Theme Toggle Button */}

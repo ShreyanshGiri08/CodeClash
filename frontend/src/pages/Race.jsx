@@ -5,7 +5,9 @@ import { getRace, checkRaceStatus, getProblem, getVerdicts, forfeitRace } from "
 import { useAuth } from "../context/AuthContext";
 import { useSound } from "../context/SoundContext";
 import PageLayout from "../components/layout/PageLayout";
+import CyberMonacoEditor from "../components/editor/CyberMonacoEditor";
 import toast from "react-hot-toast";
+
 
 
 const AVATARS = {
@@ -33,24 +35,85 @@ function formatTime(seconds) {
 function cleanCFMath(html) {
   if (!html) return "";
   let clean = html;
-  clean = clean.replace(/\\rightarrow/g, " → ");
-  clean = clean.replace(/\\leftarrow/g, " ← ");
-  clean = clean.replace(/\\Rightarrow/g, " ⇒ ");
-  clean = clean.replace(/\\Leftarrow/g, " ⇐ ");
-  clean = clean.replace(/\\to/g, " → ");
+
+  // 1. Daggers, stars & special superscript symbols
+  clean = clean.replace(/\\\^\{\\dagger\}/g, "<sup>†</sup>");
+  clean = clean.replace(/\^\{\\dagger\}/g, "<sup>†</sup>");
+  clean = clean.replace(/\^\\dagger/g, "<sup>†</sup>");
+  clean = clean.replace(/\\dagger/g, "†");
+  clean = clean.replace(/\^\{\\ddagger\}/g, "<sup>‡</sup>");
+  clean = clean.replace(/\\ddagger/g, "‡");
+  clean = clean.replace(/\^\{\\star\}/g, "<sup>*</sup>");
+  clean = clean.replace(/\\star/g, "*");
+
+  // 2. Math operators & Greek letters
+  clean = clean.replace(/\\sum_\{([^}]+)\}\^\{([^}]+)\}/g, "∑<sub>$1</sub><sup>$2</sup> ");
+  clean = clean.replace(/\\sum_\{([^}]+)\}/g, "∑<sub>$1</sub> ");
+  clean = clean.replace(/\\sum/g, "∑");
+
+  clean = clean.replace(/\\max_\{([^}]+)\}\^\{([^}]+)\}/g, "max<sub>$1</sub><sup>$2</sup> ");
+  clean = clean.replace(/\\max_\{([^}]+)\}/g, "max<sub>$1</sub> ");
+  clean = clean.replace(/\\max/g, "max");
+
+  clean = clean.replace(/\\min_\{([^}]+)\}\^\{([^}]+)\}/g, "min<sub>$1</sub><sup>$2</sup> ");
+  clean = clean.replace(/\\min_\{([^}]+)\}/g, "min<sub>$1</sub> ");
+  clean = clean.replace(/\\min/g, "min");
+
+  clean = clean.replace(/\\cdot/g, "·");
+  clean = clean.replace(/\\times/g, "×");
+  clean = clean.replace(/\\rightarrow|\\to/g, "→");
+  clean = clean.replace(/\\leftarrow/g, "←");
+  clean = clean.replace(/\\Rightarrow/g, "⇒");
+  clean = clean.replace(/\\Leftarrow/g, "⇐");
   clean = clean.replace(/\\gt/g, ">");
   clean = clean.replace(/\\ge/g, "≥");
   clean = clean.replace(/\\le/g, "≤");
-  clean = clean.replace(/\\dots/g, "...");
-  clean = clean.replace(/\\cdot/g, "·");
   clean = clean.replace(/\\ne/g, "≠");
-  clean = clean.replace(/\\times/g, "×");
-  clean = clean.replace(/\\a_\{([^}]+)\}/g, "a<sub>$1</sub>");
-  clean = clean.replace(/\\a_([a-zA-Z0-9]+)/g, "a<sub>$1</sub>");
-  clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, '<code class="font-mono text-accent bg-accent/15 border border-accent/40 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
-  clean = clean.replace(/\$\$(.*?)\$\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/30 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
+  clean = clean.replace(/\\dots/g, "...");
+  clean = clean.replace(/\\infty/g, "∞");
+  clean = clean.replace(/\\bmod/g, "mod");
+  clean = clean.replace(/\\gcd/g, "gcd");
+
+  // 3. Braces, parentheses & brackets
+  clean = clean.replace(/\\\{/g, "{").replace(/\\\}/g, "}");
+  clean = clean.replace(/\\left\(/g, "(").replace(/\\right\)/g, ")");
+  clean = clean.replace(/\\left\[/g, "[").replace(/\\right\]/g, "]");
+
+  // 4. Subscripts & Superscripts (e.g. p_i, p_j, a_i)
+  clean = clean.replace(/([a-zA-Z0-9])_([a-zA-Z0-9])/g, "$1<sub>$2</sub>");
+  clean = clean.replace(/([a-zA-Z0-9])_\{([^}]+)\}/g, "$1<sub>$2</sub>");
+
+  // 5. Clean up Codeforces $$$math$$$ wrappers
+  clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, (match, inner) => {
+    let content = inner.trim();
+    // Arrays like [2,3,1,5,4]
+    if (content.startsWith("[") && content.endsWith("]")) {
+      return `<code class="font-mono text-amber-300 font-bold bg-amber-400/10 border border-amber-400/25 px-1.5 py-0.5 rounded">${content}</code>`;
+    }
+    // Simple variable or math formula
+    return `<span class="font-mono text-accent font-semibold px-1">${content}</span>`;
+  });
+
+  clean = clean.replace(/\$\$(.*?)\$\$/g, '<span class="font-mono text-accent font-semibold px-1">$1</span>');
+
+  // 6. Add 1-click Copy buttons to Codeforces sample input and output boxes
+  clean = clean.replace(
+    /<div class="input">/g,
+    '<div class="input relative group"><button onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\'pre\').innerText); const btn=this; btn.innerText=\'✓ Copied!\'; setTimeout(() => btn.innerText=\'📋 Copy Input\', 1500);" class="absolute top-2 right-2 bg-accent/20 border border-accent/60 text-accent font-mono text-[10px] font-black px-2.5 py-1 rounded-lg cursor-pointer hover:bg-accent hover:text-black transition-all shadow-md z-20">📋 Copy Input</button>'
+  );
+
+  clean = clean.replace(
+    /<div class="output">/g,
+    '<div class="output relative group"><button onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\'pre\').innerText); const btn=this; btn.innerText=\'✓ Copied!\'; setTimeout(() => btn.innerText=\'📋 Copy Output\', 1500);" class="absolute top-2 right-2 bg-status-live/20 border border-status-live/60 text-status-live font-mono text-[10px] font-black px-2.5 py-1 rounded-lg cursor-pointer hover:bg-status-live hover:text-black transition-all shadow-md z-20">📋 Copy Output</button>'
+  );
+
   return clean;
 }
+
+
+
+
+
 
 
 
@@ -454,95 +517,122 @@ export default function Race() {
 
           <div className="flex flex-col lg:flex-row gap-5 min-h-[calc(100vh-6.5rem)]">
 
-            {/* ── Left: Problem Statement Glass Panel ──────────────── */}
-            <div className="lg:w-[48%] bg-black/80 backdrop-blur-2xl border border-accent/40 rounded-2xl overflow-hidden flex flex-col shadow-[0_10px_50px_rgba(0,0,0,0.8)]">
+            {/* ── Left: Race Clock & Problem Statement Panel ──────────────── */}
+            <div className="lg:w-[45%] flex flex-col gap-4">
 
-              <div className="px-5 py-3.5 bg-bg-elevated/80 border-b border-border/80 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
-                  <span className="font-mono text-xs font-extrabold text-accent tracking-wider">// PROBLEM STATEMENT</span>
-                  <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${wsConnected ? 'bg-status-live/15 border-status-live/40 text-status-live' : 'bg-status-warning/15 border-status-warning/40 text-status-warning'}`}>
-                    {wsConnected ? '⚡ WS LIVE' : '📡 POLLING'}
+              {/* Race Clock + Matchup Header */}
+              <div className="bg-bg-card/90 backdrop-blur-2xl border border-border/80 rounded-2xl overflow-hidden shadow-2xl">
+                <div className="flex justify-between items-center px-5 py-3 bg-bg-elevated/70 border-b border-border/80">
+                  <span className="font-mono text-xs font-bold text-text-dim tracking-wider">// RACE CLOCK & MATCHUP</span>
+                  <span className="font-mono text-xs flex items-center gap-2">
+                    <span className={`w-2.5 h-2.5 rounded-full ${finished ? "bg-text-muted" : "bg-status-live animate-pulse"}`} />
+                    <span className={`font-extrabold ${finished ? "text-text-muted" : "text-status-live"}`}>
+                      {finished ? "FINISHED" : "MATCH IN PROGRESS"}
+                    </span>
                   </span>
                 </div>
-                {problem?.url && (
-                  <a
-                    href={problem.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="font-mono text-xs bg-accent text-black font-extrabold px-3 py-1.5 rounded-lg hover:shadow-[0_0_15px_rgba(255,230,12,0.5)] transition-all flex items-center gap-1 cursor-pointer"
-                  >
-                    ↗ CODEFORCES LINK
-                  </a>
-                )}
-              </div>
 
-
-              <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar">
-                {problem ? (
-                  // Either backend scraped it (is_valid=true) OR client scraped it, OR still trying
-                  (problem.is_valid || clientHtml) ? (
-                    <motion.div
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3 }}
-                    >
-                      <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3 mb-5">
-                        <h2 className="text-xl font-extrabold text-accent tracking-tight">{problem.title}</h2>
-                        <span className="font-mono text-xs px-3 py-1 rounded-full bg-accent/15 border border-accent/40 text-accent font-extrabold shadow-sm">
-                          {cfContestId}{cfIndex}
-                        </span>
-                      </div>
-                      <div
-                        className="problem-statement text-sm leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: cleanCFMath(problem.is_valid ? problem.html : clientHtml) }}
-                      />
-                    </motion.div>
-                  ) : clientScraping ? (
-                    /* Client-side scraping in progress */
-                    <div className="py-12 space-y-5 text-center">
-                      <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
-                      <p className="font-mono text-xs text-accent font-bold animate-pulse">// FETCHING PROBLEM STATEMENT...</p>
-                      <p className="text-text-dim text-xs">Connecting to Codeforces via proxy...</p>
-                    </div>
-                  ) : (
-                    /* Both backend and client scraping failed — show direct link */
-                    <div className="py-10 space-y-5 text-center">
-                      <div className="text-4xl">⚠️</div>
-                      <p className="font-mono text-sm font-bold text-accent">{problem.title}</p>
-                      <p className="text-text-muted text-xs">Statement could not be loaded automatically.<br/>Open directly on Codeforces to view and submit:</p>
-                      <a
-                        href={problem.url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-2 font-mono text-xs bg-accent text-black font-extrabold px-6 py-3.5 rounded-lg hover:opacity-90 transition-opacity shadow-lg"
-                      >
-                        ↗ OPEN {cfContestId}{cfIndex} ON CODEFORCES
-                      </a>
-                    </div>
-                  )
-                ) : (
-
-                  /* Animated CP Quote Loader Card */
-                  <div className="py-8 space-y-6 text-center">
-                    <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
-                    <div className="p-6 rounded-2xl bg-bg-elevated/60 border border-accent/30 shadow-inner max-w-md mx-auto space-y-2">
-                      <p className="font-mono text-xs text-accent font-bold tracking-widest">// CP WISDOM</p>
-                      <p className="text-text-primary text-sm font-medium italic leading-relaxed">
-                        "{currentQuote.quote}"
+                <div className="p-5">
+                  {/* Digital Clock display */}
+                  <div className="flex items-center justify-between bg-bg-input/70 border border-border/60 p-4 rounded-xl shadow-inner">
+                    <div>
+                      <p className="font-mono text-xs text-text-dim mb-1 font-bold">⏱ REMAINING TIME</p>
+                      <p className="font-mono text-4xl sm:text-5xl font-black text-text-primary tracking-tight">
+                        {finished ? "00:00" : formatTime(remaining)}
                       </p>
-                      <p className="text-text-dim text-xs font-mono font-bold">— {currentQuote.author}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-mono text-xs text-text-dim mb-1 font-bold">ELAPSED</p>
+                      <p className="font-mono text-xl font-bold text-accent">
+                        {formatTime(race.duration_seconds - remaining)}
+                      </p>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
 
+              {/* Problem Statement Glass Panel */}
+              <div className="bg-black/80 backdrop-blur-2xl border border-accent/40 rounded-2xl overflow-hidden flex flex-col min-h-[580px] shadow-[0_10px_50px_rgba(0,0,0,0.8)] flex-1">
+                <div className="px-5 py-3.5 bg-bg-elevated/80 border-b border-border/80 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />
+                    <span className="font-mono text-xs font-extrabold text-accent tracking-wider">// PROBLEM STATEMENT</span>
+                    <span className={`font-mono text-[10px] px-2 py-0.5 rounded-full border ${wsConnected ? 'bg-status-live/15 border-status-live/40 text-status-live' : 'bg-status-warning/15 border-status-warning/40 text-status-warning'}`}>
+                      {wsConnected ? '⚡ WS LIVE' : '📡 POLLING'}
+                    </span>
+                  </div>
+                  {problem?.url && (
+                    <a
+                      href={problem.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="font-mono text-xs bg-accent text-black font-extrabold px-3 py-1.5 rounded-lg hover:shadow-[0_0_15px_rgba(255,230,12,0.5)] transition-all flex items-center gap-1 cursor-pointer"
+                    >
+                      ↗ CODEFORCES LINK
+                    </a>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar min-h-[480px] max-h-[680px]">
+                  {problem ? (
+                    (problem.is_valid || clientHtml) ? (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                      >
+                        <div className="flex items-center justify-between gap-3 border-b border-border/60 pb-3 mb-5">
+                          <h2 className="text-xl font-extrabold text-accent tracking-tight">{problem.title}</h2>
+                          <span className="font-mono text-xs px-3 py-1 rounded-full bg-accent/15 border border-accent/40 text-accent font-extrabold shadow-sm">
+                            {cfContestId}{cfIndex}
+                          </span>
+                        </div>
+                        <div
+                          className="problem-statement text-sm leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: cleanCFMath(problem.is_valid ? problem.html : clientHtml) }}
+                        />
+                      </motion.div>
+                    ) : clientScraping ? (
+                      <div className="py-12 space-y-5 text-center">
+                        <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="font-mono text-xs text-accent font-bold animate-pulse">// FETCHING PROBLEM STATEMENT...</p>
+                        <p className="text-text-dim text-xs">Connecting to Codeforces via proxy...</p>
+                      </div>
+                    ) : (
+                      <div className="py-10 space-y-5 text-center">
+                        <div className="text-4xl">⚠️</div>
+                        <p className="font-mono text-sm font-bold text-accent">{problem.title}</p>
+                        <p className="text-text-muted text-xs">Statement could not be loaded automatically.<br/>Open directly on Codeforces to view and submit:</p>
+                        <a
+                          href={problem.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 font-mono text-xs bg-accent text-black font-extrabold px-6 py-3.5 rounded-lg hover:opacity-90 transition-opacity shadow-lg"
+                        >
+                          ↗ OPEN {cfContestId}{cfIndex} ON CODEFORCES
+                        </a>
+                      </div>
+                    )
+                  ) : (
+                    <div className="py-8 space-y-6 text-center">
+                      <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
+                      <div className="p-6 rounded-2xl bg-bg-elevated/60 border border-accent/30 shadow-inner max-w-md mx-auto space-y-2">
+                        <p className="font-mono text-xs text-accent font-bold tracking-widest">// CP WISDOM</p>
+                        <p className="text-text-primary text-sm font-medium italic leading-relaxed">
+                          "{currentQuote.quote}"
+                        </p>
+                        <p className="text-text-dim text-xs font-mono font-bold">— {currentQuote.author}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* ── Right: Race Controls & Submissions Radar Panel ──────────────── */}
-            <div className="lg:w-[52%] flex flex-col gap-4">
+            {/* ── Right: Massive 750px Monaco Code Studio & Race Actions ──────────────── */}
+            <div className="lg:w-[55%] flex flex-col gap-4">
 
-              {/* TOP ACTION BAR — Sleek, Prominent, Front & Center! */}
+              {/* TOP ACTION BAR */}
               {!finished && (
                 <div className="bg-bg-card/95 backdrop-blur-2xl border border-accent/40 rounded-2xl p-4 shadow-[0_0_30px_rgba(255,230,12,0.1)] space-y-3">
                   <div className="flex items-center justify-between text-xs font-mono font-bold text-text-dim px-1">
@@ -588,6 +678,16 @@ export default function Race() {
                   </div>
                 </div>
               )}
+
+              {/* Embedded Monaco Code Studio in Race Room — Massive 750px Height! */}
+              <div className="flex-1 min-h-[750px] flex flex-col">
+                <CyberMonacoEditor />
+              </div>
+            </div>
+
+
+
+
 
               {/* Race Clock + Matchup Header */}
               <div className="bg-bg-card/90 backdrop-blur-2xl border border-border/80 rounded-2xl overflow-hidden shadow-2xl">

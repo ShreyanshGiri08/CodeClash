@@ -245,9 +245,21 @@ html.light [class*="bg-cyan-500/"]   { background-color: rgba(99,102,241,0.30) !
 .problem-statement div,
 .problem-statement p,
 .problem-statement span,
-.problem-statement li {
+.problem-statement li,
+.problem-statement pre,
+.problem-statement code {
   color: var(--color-text-primary) !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  cursor: text !important;
 }
+
+.problem-statement ::selection {
+  background-color: rgba(255, 230, 12, 0.45) !important;
+  color: #000000 !important;
+}
+
 
 .problem-statement .header {
   border-bottom: 1px solid var(--color-border);

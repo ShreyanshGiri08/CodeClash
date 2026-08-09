@@ -5,6 +5,8 @@ import PageLayout from "../components/layout/PageLayout";
 import AntigravityCyberBackground from "../components/common/AntigravityCyberBackground";
 import toast from "react-hot-toast";
 import { useSound } from "../context/SoundContext";
+import CyberMonacoEditor from "../components/editor/CyberMonacoEditor";
+
 
 
 
@@ -24,25 +26,84 @@ const TAGS = [
 // Clean Codeforces TeX delimiters & LaTeX math symbols
 function cleanLaTeX(html) {
   if (!html) return "";
-  let clean = html
-    .replace(/\\gt/g, ">")
-    .replace(/\\lt/g, "<")
-    .replace(/\\ge/g, "≥")
-    .replace(/\\le/g, "≤")
-    .replace(/\\dots/g, "...")
-    .replace(/\\cdot/g, "·")
-    .replace(/\\ne/g, "≠")
-    .replace(/\\times/g, "×")
-    .replace(/\\to/g, "→")
-    .replace(/\\color\{[^}]*\}/g, "")
-    .replace(/\\texttt\{([^}]*)\}/g, "$1")
-    .replace(/\\text\{([^}]*)\}/g, "$1");
+  let clean = html;
 
-  clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, '<code class="font-mono text-accent bg-accent/15 border border-accent/40 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
-  clean = clean.replace(/\$\$(.*?)\$\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/30 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
-  clean = clean.replace(/\$(.*?)\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/20 px-1 py-0.5 rounded text-xs">$1</code>');
+  // 1. Daggers, stars & special superscript symbols
+  clean = clean.replace(/\\\^\{\\dagger\}/g, "<sup>†</sup>");
+  clean = clean.replace(/\^\{\\dagger\}/g, "<sup>†</sup>");
+  clean = clean.replace(/\^\\dagger/g, "<sup>†</sup>");
+  clean = clean.replace(/\\dagger/g, "†");
+  clean = clean.replace(/\^\{\\ddagger\}/g, "<sup>‡</sup>");
+  clean = clean.replace(/\\ddagger/g, "‡");
+  clean = clean.replace(/\^\{\\star\}/g, "<sup>*</sup>");
+  clean = clean.replace(/\\star/g, "*");
+
+  // 2. Math operators & Greek letters
+  clean = clean.replace(/\\sum_\{([^}]+)\}\^\{([^}]+)\}/g, "∑<sub>$1</sub><sup>$2</sup> ");
+  clean = clean.replace(/\\sum_\{([^}]+)\}/g, "∑<sub>$1</sub> ");
+  clean = clean.replace(/\\sum/g, "∑");
+
+  clean = clean.replace(/\\max_\{([^}]+)\}\^\{([^}]+)\}/g, "max<sub>$1</sub><sup>$2</sup> ");
+  clean = clean.replace(/\\max_\{([^}]+)\}/g, "max<sub>$1</sub> ");
+  clean = clean.replace(/\\max/g, "max");
+
+  clean = clean.replace(/\\min_\{([^}]+)\}\^\{([^}]+)\}/g, "min<sub>$1</sub><sup>$2</sup> ");
+  clean = clean.replace(/\\min_\{([^}]+)\}/g, "min<sub>$1</sub> ");
+  clean = clean.replace(/\\min/g, "min");
+
+  clean = clean.replace(/\\cdot/g, "·");
+  clean = clean.replace(/\\times/g, "×");
+  clean = clean.replace(/\\rightarrow|\\to/g, "→");
+  clean = clean.replace(/\\leftarrow/g, "←");
+  clean = clean.replace(/\\Rightarrow/g, "⇒");
+  clean = clean.replace(/\\Leftarrow/g, "⇐");
+  clean = clean.replace(/\\gt/g, ">");
+  clean = clean.replace(/\\lt/g, "<");
+  clean = clean.replace(/\\ge/g, "≥");
+  clean = clean.replace(/\\le/g, "≤");
+  clean = clean.replace(/\\ne/g, "≠");
+  clean = clean.replace(/\\dots/g, "...");
+  clean = clean.replace(/\\infty/g, "∞");
+  clean = clean.replace(/\\bmod/g, "mod");
+  clean = clean.replace(/\\gcd/g, "gcd");
+
+  // 3. Braces, parentheses & brackets
+  clean = clean.replace(/\\\{/g, "{").replace(/\\\}/g, "}");
+  clean = clean.replace(/\\left\(/g, "(").replace(/\\right\)/g, ")");
+  clean = clean.replace(/\\left\[/g, "[").replace(/\\right\]/g, "]");
+
+  // 4. Subscripts & Superscripts (e.g. p_i, p_j, a_i)
+  clean = clean.replace(/([a-zA-Z0-9])_([a-zA-Z0-9])/g, "$1<sub>$2</sub>");
+  clean = clean.replace(/([a-zA-Z0-9])_\{([^}]+)\}/g, "$1<sub>$2</sub>");
+
+  // 5. Clean up Codeforces $$$math$$$ wrappers
+  clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, (match, inner) => {
+    let content = inner.trim();
+    if (content.startsWith("[") && content.endsWith("]")) {
+      return `<code class="font-mono text-amber-300 font-bold bg-amber-400/10 border border-amber-400/25 px-1.5 py-0.5 rounded">${content}</code>`;
+    }
+    return `<span class="font-mono text-accent font-semibold px-0.5">${content}</span>`;
+  });
+
+  clean = clean.replace(/\$\$(.*?)\$\$/g, '<span class="font-mono text-accent font-semibold px-0.5">$1</span>');
+  clean = clean.replace(/\$(.*?)\$/g, '<span class="font-mono text-accent font-semibold px-0.5">$1</span>');
+
+  // 6. Add 1-click Copy buttons to Codeforces sample input and output boxes
+  clean = clean.replace(
+    /<div class="input">/g,
+    '<div class="input relative group"><button onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\'pre\').innerText); const btn=this; btn.innerText=\'✓ Copied!\'; setTimeout(() => btn.innerText=\'📋 Copy Input\', 1500);" class="absolute top-2 right-2 bg-accent/20 border border-accent/60 text-accent font-mono text-[10px] font-black px-2.5 py-1 rounded-lg cursor-pointer hover:bg-accent hover:text-black transition-all shadow-md z-20">📋 Copy Input</button>'
+  );
+
+  clean = clean.replace(
+    /<div class="output">/g,
+    '<div class="output relative group"><button onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\'pre\').innerText); const btn=this; btn.innerText=\'✓ Copied!\'; setTimeout(() => btn.innerText=\'📋 Copy Output\', 1500);" class="absolute top-2 right-2 bg-status-live/20 border border-status-live/60 text-status-live font-mono text-[10px] font-black px-2.5 py-1 rounded-lg cursor-pointer hover:bg-status-live hover:text-black transition-all shadow-md z-20">📋 Copy Output</button>'
+  );
+
   return clean;
 }
+
+
+
 
 // Fetch problem statement via CORS proxies
 async function fetchCFStatementClientSide(contestId, index) {
@@ -176,18 +237,41 @@ export default function Practice() {
       .finally(() => setLoadingProblem(false));
   };
 
-  const handleCheckSubmission = () => {
+  const handleCheckSubmission = async () => {
     setChecking(true);
     playSoftBlip(700, 0.05);
-    const toastId = toast.loading("Checking Codeforces for solo submission...");
-    setTimeout(() => {
+    const toastId = toast.loading("Checking Codeforces API for your submission...");
+
+    try {
+      // Check user's recent submissions on Codeforces API
+      const handle = problem?.handle || "tourist"; // Or prompt user handle
+      const res = await fetch(`https://codeforces.com/api/user.status?handle=${handle}&from=1&count=10`);
+      const data = await res.json();
+
       setChecking(false);
-      playVictory();
-      toast.success("Accepted! Solo Practice Task Cleared 🎉", { id: toastId });
-      setPhase("completed");
-      clearInterval(timerRef.current);
-    }, 2500);
+
+      if (data && data.status === "OK" && data.result) {
+        const sub = data.result.find(
+          (s) => s.problem?.contestId === problem.contestId && s.problem?.index === problem.index
+        );
+
+        if (sub && sub.verdict === "OK") {
+          playVictory();
+          toast.success("VERDICT: ACCEPTED! Solo Practice Task Cleared 🎉", { id: toastId });
+          setPhase("completed");
+          clearInterval(timerRef.current);
+          return;
+        }
+      }
+    } catch (_) {
+      /* API rate limited */
+    }
+
+    setChecking(false);
+    playSadness();
+    toast.error("No Accepted (AC) submission found on Codeforces yet! Submit on Codeforces or test locally.", { id: toastId });
   };
+
 
 
   const formatTime = (secs) => {
@@ -312,96 +396,103 @@ export default function Practice() {
             </motion.div>
           )}
 
-          {/* PRACTICING PHASE */}
+          {/* PRACTICING PHASE — 2-COLUMN SIDE-BY-SIDE SPLIT LAYOUT */}
           {phase === "practicing" && (
             <motion.div
               initial={{ opacity: 0, scale: 0.98 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="grid grid-cols-1 lg:grid-cols-12 gap-6"
+              className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start"
             >
-              {/* Problem Panel */}
-              <div className="lg:col-span-8 bg-black/90 backdrop-blur-2xl border border-accent/40 rounded-2xl p-6 space-y-6 shadow-2xl flex flex-col min-h-[500px]">
-                <div className="flex items-center justify-between border-b border-border/80 pb-4">
-                  <div>
-                    <span className="font-mono text-xs text-accent font-bold tracking-widest">// PRACTICE TASK ({problem?.rating} ELO)</span>
-                    <h2 className="text-xl font-extrabold text-text-primary">{problem?.title}</h2>
-                  </div>
-                  {problem?.url && (
-                    <a
-                      href={problem.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="font-mono text-xs bg-accent text-black font-extrabold px-3.5 py-1.5 rounded-lg hover:shadow-[0_0_15px_rgba(255,230,12,0.5)] transition-all cursor-pointer"
-                    >
-                      ↗ CODEFORCES LINK
-                    </a>
-                  )}
-                </div>
+              {/* Problem Panel & Controls (Left 6 Columns) */}
+              <div className="lg:col-span-6 space-y-6">
 
-                <div className="flex-1 overflow-y-auto custom-scrollbar">
-                  {loadingProblem ? (
-                    <div className="py-20 text-center space-y-4">
-                      <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
-                      <p className="font-mono text-xs text-accent font-bold animate-pulse">// SCRAPING MATCHING CF TASK...</p>
+                <div className="bg-black/90 backdrop-blur-2xl border border-accent/40 rounded-2xl p-6 space-y-6 shadow-2xl flex flex-col min-h-[750px]">
+                  <div className="flex items-center justify-between border-b border-border/80 pb-4">
+                    <div>
+                      <span className="font-mono text-xs text-accent font-bold tracking-widest">// PRACTICE TASK ({problem?.rating} ELO)</span>
+                      <h2 className="text-xl font-extrabold text-text-primary">{problem?.title}</h2>
                     </div>
-                  ) : statementHtml ? (
-                    <div
-                      className="problem-statement text-text-primary p-2 space-y-4"
-                      dangerouslySetInnerHTML={{ __html: statementHtml }}
-                    />
-                  ) : (
-                    <div className="p-8 text-center space-y-4 bg-bg-elevated/40 rounded-xl border border-border/60">
-                      <p className="text-text-primary text-sm font-medium">
-                        Open the problem statement directly on Codeforces to solve:
-                      </p>
+                    {problem?.url && (
                       <a
-                        href={problem?.url}
+                        href={problem.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-2 font-mono text-xs bg-accent text-black font-extrabold px-6 py-3 rounded-xl shadow-lg"
+                        className="font-mono text-xs bg-accent text-black font-extrabold px-3.5 py-1.5 rounded-lg hover:shadow-[0_0_15px_rgba(255,230,12,0.5)] transition-all cursor-pointer"
                       >
-                        ↗ OPEN TASK ON CODEFORCES
+                        ↗ CODEFORCES LINK
                       </a>
-                    </div>
-                  )}
+                    )}
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto min-h-[620px] max-h-[750px] custom-scrollbar">
+                    {loadingProblem ? (
+                      <div className="py-20 text-center space-y-4">
+                        <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
+                        <p className="font-mono text-xs text-accent font-bold animate-pulse">// SCRAPING MATCHING CF TASK...</p>
+                      </div>
+                    ) : statementHtml ? (
+                      <div
+                        className="problem-statement text-text-primary p-2 space-y-4 select-text cursor-text"
+                        dangerouslySetInnerHTML={{ __html: cleanLaTeX(statementHtml) }}
+                      />
+                    ) : (
+                      <div className="p-8 text-center space-y-4 bg-bg-elevated/40 rounded-xl border border-border/60">
+                        <p className="text-text-primary text-sm font-medium">
+                          Open the problem statement directly on Codeforces to solve:
+                        </p>
+                        <a
+                          href={problem?.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-2 font-mono text-xs bg-accent text-black font-extrabold px-6 py-3 rounded-xl shadow-lg"
+                        >
+                          ↗ OPEN TASK ON CODEFORCES
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Sidebar Controls */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Timer Card */}
+                  <div className="bg-black/90 backdrop-blur-2xl border border-accent/30 rounded-2xl p-5 text-center space-y-1 shadow-2xl">
+                    <p className="font-mono text-[10px] text-text-dim tracking-widest">// ELAPSED TIME</p>
+                    <p className="font-mono text-3xl font-black text-accent tracking-wider">{formatTime(elapsed)}</p>
+                    <p className="font-mono text-[10px] text-text-muted">Target: {duration}:00</p>
+                  </div>
+
+                  {/* Submission Action */}
+                  <div className="bg-black/90 backdrop-blur-2xl border border-accent/30 rounded-2xl p-5 space-y-2 shadow-2xl flex flex-col justify-center">
+                    <button
+                      onClick={handleCheckSubmission}
+                      disabled={checking}
+                      className="w-full font-mono text-xs font-black bg-accent text-black py-3 rounded-xl hover:shadow-[0_0_20px_rgba(255,230,12,0.5)] transition-all cursor-pointer disabled:opacity-50"
+                    >
+                      {checking ? "CHECKING SUBMISSION..." : "✓ CHECK SUBMISSION"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        clearInterval(timerRef.current);
+                        playSadness();
+                        setPhase("setup");
+                      }}
+                      className="w-full font-mono text-[10px] text-status-error hover:underline cursor-pointer text-center"
+                    >
+                      🏳 End Session
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              {/* Sidebar Controls */}
-              <div className="lg:col-span-4 space-y-4">
-                {/* Timer Card */}
-                <div className="bg-black/90 backdrop-blur-2xl border border-accent/30 rounded-2xl p-6 text-center space-y-2 shadow-2xl">
-                  <p className="font-mono text-xs text-text-dim tracking-widest">// ELAPSED TIME</p>
-                  <p className="font-mono text-4xl font-black text-accent tracking-wider">{formatTime(elapsed)}</p>
-                  <p className="font-mono text-[11px] text-text-muted">Target: {duration}:00</p>
-                </div>
-
-                {/* Submission Action */}
-                <div className="bg-black/90 backdrop-blur-2xl border border-accent/30 rounded-2xl p-6 space-y-4 shadow-2xl">
-                  <p className="font-mono text-xs text-accent font-bold">// ACTION</p>
-                  <button
-                    onClick={handleCheckSubmission}
-                    disabled={checking}
-                    className="w-full font-mono text-xs font-black bg-accent text-black py-3.5 rounded-xl hover:shadow-[0_0_20px_rgba(255,230,12,0.5)] transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    {checking ? "CHECKING SUBMISSION..." : "✓ CHECK MY SUBMISSION"}
-                  </button>
-                  <button
-                    onClick={() => {
-                      clearInterval(timerRef.current);
-                      playSadness();
-                      setPhase("setup");
-                    }}
-                    className="w-full font-mono text-xs text-status-error hover:underline cursor-pointer text-center"
-                  >
-                    🏳 End Session (Sadness SFX Test)
-                  </button>
-
-
-                </div>
+              {/* Code Studio IDE (Right 6 Columns — Massive 750px Height!) */}
+              <div className="lg:col-span-6 h-full min-h-[750px] flex flex-col">
+                <CyberMonacoEditor />
               </div>
             </motion.div>
           )}
+
+
 
           {/* ── SPECTACULAR CELEBRATORY VICTORY SCREEN ───────────── */}
           {phase === "completed" && (

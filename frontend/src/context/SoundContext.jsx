@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useRef, useEffect } from "react";
+import { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
 
 const SoundContext = createContext();
 
@@ -11,6 +11,7 @@ export function SoundProvider({ children }) {
   });
 
   const ctxRef = useRef(null);
+  const activeSourcesRef = useRef([]);
 
   // Sync mute state to localStorage
   useEffect(() => {
@@ -19,8 +20,25 @@ export function SoundProvider({ children }) {
     }
   }, [muted]);
 
-  // Robust Async Tone Synthesizer that handles Chrome's async ctx.resume()
-  const playNotes = async (notes) => {
+  // Instantly stop all active sound nodes & suspend context when muted
+  const stopAllAudio = useCallback(() => {
+    try {
+      activeSourcesRef.current.forEach((source) => {
+        try {
+          source.stop();
+          source.disconnect();
+        } catch (_) {}
+      });
+      activeSourcesRef.current = [];
+
+      if (ctxRef.current && ctxRef.current.state === "running") {
+        ctxRef.current.suspend();
+      }
+    } catch (_) {}
+  }, []);
+
+  // Robust Async Tone Synthesizer with full volume gain
+  const playNotes = useCallback(async (notes) => {
     if (muted) return; // HARD MUTE GUARANTEE: Zero audio execution when muted!
 
     try {
@@ -34,7 +52,7 @@ export function SoundProvider({ children }) {
       const ctx = ctxRef.current;
       if (!ctx) return;
 
-      // CRITICAL FIX: Await Chrome's async AudioContext resume BEFORE getting currentTime!
+      // Ensure AudioContext is resumed before reading currentTime
       if (ctx.state === "suspended") {
         await ctx.resume();
       }
@@ -48,75 +66,124 @@ export function SoundProvider({ children }) {
         osc.type = n.type || "sine";
         osc.frequency.setValueAtTime(n.freq, now + n.time);
 
-        gain.gain.setValueAtTime(n.vol ?? 0.3, now + n.time);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + n.time + n.dur);
+        // Increased default volume gain to 0.4 for clear audibility
+        const targetVol = n.vol ?? 0.4;
+        gain.gain.setValueAtTime(targetVol, now + n.time);
+        gain.gain.linearRampToValueAtTime(0.0001, now + n.time + n.dur);
 
         osc.connect(gain);
         gain.connect(ctx.destination);
 
         osc.start(now + n.time);
         osc.stop(now + n.time + n.dur);
+
+        activeSourcesRef.current.push(osc);
+        osc.onended = () => {
+          activeSourcesRef.current = activeSourcesRef.current.filter((s) => s !== osc);
+        };
       });
     } catch (e) {
       console.warn("Audio playNotes failed", e);
     }
-  };
+  }, [muted]);
 
-  const toggleMute = () => {
+  // 1. Soft Cyber Tap (Audible 800Hz sine tap for general UI navigation/buttons)
+  const playClick = useCallback(() => {
+    if (muted) return;
+    playNotes([{ freq: 800, time: 0, dur: 0.08, vol: 0.35, type: "sine" }]);
+  }, [muted, playNotes]);
+
+  // 2. Action Pulse (600Hz -> 950Hz for primary buttons)
+  const playAction = useCallback(() => {
+    if (muted) return;
+    playNotes([
+      { freq: 600, time: 0, dur: 0.08, vol: 0.35, type: "sine" },
+      { freq: 950, time: 0.06, dur: 0.1, vol: 0.4, type: "sine" },
+    ]);
+  }, [muted, playNotes]);
+
+  // 3. ⚔️ MATCH & QUEUE FOUND THRILL (Arcade Chime: A4 -> C#5 -> E5 -> A5)
+  const playQueueFound = useCallback(() => {
+    if (muted) return;
+    playNotes([
+      { freq: 440.00, time: 0, dur: 0.25, vol: 0.4, type: "triangle" },
+      { freq: 554.37, time: 0.07, dur: 0.25, vol: 0.4, type: "triangle" },
+      { freq: 659.25, time: 0.14, dur: 0.25, vol: 0.4, type: "triangle" },
+      { freq: 880.00, time: 0.22, dur: 0.35, vol: 0.45, type: "triangle" },
+    ]);
+  }, [muted, playNotes]);
+
+  // 4. 🏆 VICTORY & KHUSHI (5-Note Celebration Fanfare: C5 -> E5 -> G5 -> C6 -> E6)
+  const playVictory = useCallback(() => {
+    if (muted) return;
+    playNotes([
+      { freq: 523.25, time: 0, dur: 0.15, vol: 0.4, type: "sine" },
+      { freq: 659.25, time: 0.10, dur: 0.15, vol: 0.4, type: "sine" },
+      { freq: 783.99, time: 0.20, dur: 0.18, vol: 0.4, type: "sine" },
+      { freq: 1046.50, time: 0.32, dur: 0.22, vol: 0.45, type: "sine" },
+      { freq: 1318.51, time: 0.46, dur: 0.55, vol: 0.5, type: "sine" },
+    ]);
+  }, [muted, playNotes]);
+
+  // 5. 😔 SADNESS & LOSS (Descending Melancholic Triad: A4 -> F4 -> D4)
+  const playSadness = useCallback(() => {
+    if (muted) return;
+    playNotes([
+      { freq: 440.00, time: 0, dur: 0.22, vol: 0.4, type: "triangle" },
+      { freq: 349.23, time: 0.16, dur: 0.22, vol: 0.4, type: "triangle" },
+      { freq: 293.66, time: 0.32, dur: 0.55, vol: 0.45, type: "triangle" },
+    ]);
+  }, [muted, playNotes]);
+
+  // Toggle Mute
+  const toggleMute = useCallback(() => {
     setMuted((prev) => {
       const next = !prev;
-      if (!next) {
-        // Unmuting: play pleasant test chime
-        playVictory();
+      if (next) {
+        stopAllAudio();
+      } else {
+        playAction();
       }
       return next;
     });
-  };
+  }, [stopAllAudio, playAction]);
 
-  // 1. Soft Micro UI Click (500Hz sine tap)
-  const playClick = () => {
-    if (muted) return;
-    playNotes([{ freq: 500, time: 0, dur: 0.03, vol: 0.1, type: "sine" }]);
-  };
+  // Global Intelligent Button Click Event Delegation
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
-  // 2. Generic Soft Tone
-  const playSoftBlip = (freq = 600, duration = 0.05) => {
-    if (muted) return;
-    playNotes([{ freq, time: 0, dur: duration, vol: 0.2, type: "sine" }]);
-  };
+    const handleGlobalClick = (e) => {
+      if (muted) return;
 
-  // 3. ⚔️ MATCH & QUEUE FOUND THRILL (Ascending 4-Note Arcade Arpeggio: C5 -> E5 -> G5 -> C6)
-  const playQueueFound = () => {
-    if (muted) return;
-    playNotes([
-      { freq: 523.25, time: 0, dur: 0.3, vol: 0.35, type: "triangle" },    // C5
-      { freq: 659.25, time: 0.08, dur: 0.3, vol: 0.35, type: "triangle" }, // E5
-      { freq: 783.99, time: 0.16, dur: 0.3, vol: 0.35, type: "triangle" }, // G5
-      { freq: 1046.50, time: 0.24, dur: 0.35, vol: 0.4, type: "triangle" },// C6
-    ]);
-  };
+      const target = e.target;
+      if (!target) return;
 
-  // 4. 🏆 VICTORY & KHUSHI (Triumphant 5-Note Major Celebration: C5 -> E5 -> G5 -> C6 -> E6 Shimmer)
-  const playVictory = () => {
-    if (muted) return;
-    playNotes([
-      { freq: 523.25, time: 0, dur: 0.15, vol: 0.35, type: "sine" },    // C5
-      { freq: 659.25, time: 0.10, dur: 0.15, vol: 0.35, type: "sine" }, // E5
-      { freq: 783.99, time: 0.20, dur: 0.18, vol: 0.35, type: "sine" }, // G5
-      { freq: 1046.50, time: 0.32, dur: 0.22, vol: 0.40, type: "sine" },// C6
-      { freq: 1318.51, time: 0.46, dur: 0.55, vol: 0.45, type: "sine" },// E6
-    ]);
-  };
+      const clickable = target.closest("button, a, [role='button']");
+      if (!clickable) return;
 
-  // 5. 😔 SADNESS & LOSS (Descending Melancholic 3-Note Minor Chime: A4 -> F4 -> C4)
-  const playSadness = () => {
-    if (muted) return;
-    playNotes([
-      { freq: 440.00, time: 0, dur: 0.22, vol: 0.35, type: "sine" },   // A4
-      { freq: 349.23, time: 0.16, dur: 0.22, vol: 0.35, type: "sine" }, // F4
-      { freq: 261.63, time: 0.34, dur: 0.60, vol: 0.40, type: "sine" }, // C4
-    ]);
-  };
+      if (clickable.disabled || clickable.getAttribute("data-sound") === "none") return;
+
+      const customSound = clickable.getAttribute("data-sound");
+      const btnText = (clickable.innerText || "").toLowerCase();
+
+      if (customSound === "sadness" || btnText.includes("end session") || btnText.includes("forfeit") || btnText.includes("cancel")) {
+        playSadness();
+      } else if (customSound === "victory" || btnText.includes("check my submission") || btnText.includes("claim")) {
+        playVictory();
+      } else if (customSound === "queue" || btnText.includes("search match") || btnText.includes("find race")) {
+        playQueueFound();
+      } else if (customSound === "action" || btnText.includes("start practice") || btnText.includes("link account") || btnText.includes("submit")) {
+        playAction();
+      } else {
+        playClick();
+      }
+    };
+
+    window.addEventListener("click", handleGlobalClick, { capture: true, passive: true });
+    return () => {
+      window.removeEventListener("click", handleGlobalClick, { capture: true });
+    };
+  }, [muted, playClick, playAction, playSadness, playVictory, playQueueFound]);
 
   return (
     <SoundContext.Provider
@@ -124,7 +191,7 @@ export function SoundProvider({ children }) {
         muted,
         toggleMute,
         playClick,
-        playSoftBlip,
+        playAction,
         playQueueFound,
         playVictory,
         playSadness,

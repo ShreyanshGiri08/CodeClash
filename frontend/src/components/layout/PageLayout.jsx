@@ -14,4 +14,3 @@ export default function PageLayout({ children, hideFooter = false }) {
     </div>
   );
 }
-

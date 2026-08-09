@@ -82,19 +82,16 @@ export default function FindRace() {
       if (res.status === "matched") {
         clearInterval(timerRef.current);
         playQueueFound();
-
         setPhase("matched");
-        setTimeout(() => navigate(`/race/${res.race_id}`), 500);
+        setTimeout(() => navigate(`/race/${res.race_id}`), 3500);
         return;
       }
-
     } catch (e) {
       setError(e.message || "Failed to join queue");
       setPhase("idle");
       clearInterval(timerRef.current);
       return;
     }
-
 
     // Start polling
     async function poll() {
@@ -103,11 +100,11 @@ export default function FindRace() {
         if (status.status === "matched") {
           clearInterval(timerRef.current);
           playQueueFound();
-
           setPhase("matched");
-          setTimeout(() => navigate(`/race/${status.race_id}`), 500);
+          setTimeout(() => navigate(`/race/${status.race_id}`), 3500);
           return;
         }
+
 
         if (status.status === "timeout") {
           clearInterval(timerRef.current);
@@ -330,19 +327,97 @@ export default function FindRace() {
             </div>
           )}
 
+          {/* ── VALORANT ESPORTS VS MATCH ENTRANCE SCREEN ───────────── */}
           {phase === "matched" && (
-            <div className="p-8 sm:p-12 text-center">
-              <motion.div
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 200 }}
-              >
-                <p className="text-4xl mb-4">⚔️</p>
-                <p className="text-2xl font-bold text-accent mb-2">OPPONENT FOUND</p>
-                <p className="text-text-muted text-sm">Entering race room...</p>
-              </motion.div>
-            </div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", damping: 14 }}
+              className="fixed inset-0 z-50 bg-black/95 backdrop-blur-3xl flex items-center justify-center p-4"
+            >
+              {/* Radial clash glow background */}
+              <div className="absolute inset-0 bg-gradient-to-r from-cyan-600/20 via-accent/20 to-purple-600/20 pointer-events-none" />
+
+              <div className="relative max-w-3xl w-full text-center space-y-8 z-10">
+                <motion.div
+                  initial={{ y: -20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="space-y-2"
+                >
+                  <span className="inline-flex items-center gap-2 font-mono text-xs px-4 py-1.5 rounded-full bg-accent/20 border border-accent/60 text-accent font-black tracking-widest shadow-[0_0_20px_rgba(255,230,12,0.4)]">
+                    <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                    MATCH READY · LAUNCHING RACE ARENA
+                  </span>
+                  <h2 className="text-3xl sm:text-5xl font-black text-text-primary tracking-tight pt-2">
+                    1V1 RANKED CLASH FOUND
+                  </h2>
+                </motion.div>
+
+                {/* Split-Screen VS Matchup Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-7 gap-4 items-center">
+                  {/* Left Player: Champion (You) */}
+                  <motion.div
+                    initial={{ x: -100, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ type: "spring", damping: 16, delay: 0.1 }}
+                    className="sm:col-span-3 bg-black/90 border-2 border-accent rounded-3xl p-6 text-center space-y-3 shadow-[0_0_40px_rgba(255,230,12,0.3)] relative overflow-hidden"
+                  >
+                    <div className="w-20 h-20 mx-auto rounded-full bg-accent/20 border-2 border-accent flex items-center justify-center text-4xl shadow-inner">
+                      ⚡
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs text-accent font-black tracking-widest">// YOU (CHAMPION)</p>
+                      <h3 className="text-xl font-extrabold text-text-primary">{user?.cf_handle || user?.username || "You"}</h3>
+                      <p className="font-mono text-sm text-accent font-extrabold mt-1">{user?.elo || 1200} ELO</p>
+                    </div>
+                  </motion.div>
+
+                  {/* VS Clash Center Badge */}
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: [0, 1.3, 1], rotate: 0 }}
+                    transition={{ duration: 0.6, delay: 0.2 }}
+                    className="sm:col-span-1 py-2"
+                  >
+                    <div className="w-16 h-16 mx-auto rounded-2xl bg-accent text-black font-black text-2xl flex items-center justify-center shadow-[0_0_30px_rgba(255,230,12,0.6)] animate-pulse">
+                      VS
+                    </div>
+                  </motion.div>
+
+                  {/* Right Player: Challenger (Opponent) */}
+                  <motion.div
+                    initial={{ x: 100, opacity: 0 }}
+                    animate={{ x: 0, opacity: 1 }}
+                    transition={{ type: "spring", damping: 16, delay: 0.1 }}
+                    className="sm:col-span-3 bg-black/90 border-2 border-cyan-400 rounded-3xl p-6 text-center space-y-3 shadow-[0_0_40px_rgba(6,182,212,0.3)] relative overflow-hidden"
+                  >
+                    <div className="w-20 h-20 mx-auto rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center text-4xl shadow-inner">
+                      ⚔️
+                    </div>
+                    <div>
+                      <p className="font-mono text-xs text-cyan-400 font-black tracking-widest">// CHALLENGER</p>
+                      <h3 className="text-xl font-extrabold text-text-primary">Matched Opponent</h3>
+                      <p className="font-mono text-sm text-cyan-400 font-extrabold mt-1">Ranked Competitor</p>
+                    </div>
+                  </motion.div>
+                </div>
+
+                {/* Progress bar countdown */}
+                <div className="max-w-md mx-auto space-y-2 pt-4">
+                  <div className="w-full h-2.5 rounded-full bg-bg-elevated overflow-hidden border border-border">
+                    <motion.div
+                      initial={{ width: "0%" }}
+                      animate={{ width: "100%" }}
+                      transition={{ duration: 3.5, ease: "linear" }}
+                      className="h-full bg-gradient-to-r from-accent via-cyan-400 to-accent shadow-[0_0_15px_#ffe60c]"
+                    />
+                  </div>
+                  <p className="font-mono text-xs text-text-dim font-bold animate-pulse">// ENTERING ARENA IN 3.5s...</p>
+                </div>
+              </div>
+            </motion.div>
           )}
+
 
           {phase === "timeout" && (
             <div className="p-8 sm:p-12 text-center">
