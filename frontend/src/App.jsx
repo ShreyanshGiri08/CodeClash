@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { SoundProvider } from "./context/SoundContext";
 import { Toaster } from "react-hot-toast";
+
 
 // Pages
 import Landing from "./pages/Landing";
@@ -15,6 +17,11 @@ import JoinChallenge from "./pages/JoinChallenge";
 import Leaderboard from "./pages/Leaderboard";
 import Settings from "./pages/Settings";
 import LinkCF from "./pages/LinkCF";
+import Practice from "./pages/Practice";
+import Analytics from "./pages/Analytics";
+import MatchDetails from "./pages/MatchDetails";
+import Badges from "./pages/Badges";
+import Docs from "./pages/Docs";
 import NotFound from "./pages/NotFound";
 
 
@@ -38,18 +45,23 @@ function PublicAuthRoute({ children }) {
 function AppRoutes() {
   return (
     <Routes>
-      {/* Public */}
+      {/* Public Pages */}
       <Route path="/" element={<Landing />} />
       <Route path="/signup" element={<PublicAuthRoute><Signup /></PublicAuthRoute>} />
       <Route path="/login" element={<PublicAuthRoute><Login /></PublicAuthRoute>} />
 
+      <Route path="/practice" element={<Practice />} />
+      <Route path="/analytics" element={<Analytics />} />
       <Route path="/leaderboard" element={<Leaderboard />} />
+      <Route path="/achievements" element={<Badges />} />
+      <Route path="/docs" element={<Docs />} />
       <Route path="/challenge/:token" element={<JoinChallenge />} />
 
-      {/* Protected */}
+      {/* Protected Pages */}
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/race/find" element={<ProtectedRoute><FindRace /></ProtectedRoute>} />
       <Route path="/race/:raceId" element={<ProtectedRoute><Race /></ProtectedRoute>} />
+      <Route path="/race/:raceId/summary" element={<ProtectedRoute><MatchDetails /></ProtectedRoute>} />
       <Route path="/challenge" element={<ProtectedRoute><Challenge /></ProtectedRoute>} />
       <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
       <Route path="/link-cf" element={<ProtectedRoute><LinkCF /></ProtectedRoute>} />
@@ -61,13 +73,17 @@ function AppRoutes() {
 }
 
 
+
+
 export default function App() {
   return (
     <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <AppRoutes />
-          <Toaster
+      <SoundProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <AppRoutes />
+            <Toaster
+
             position="bottom-right"
             toastOptions={{
               style: {
@@ -87,6 +103,7 @@ export default function App() {
           />
         </AuthProvider>
       </BrowserRouter>
-    </ThemeProvider>
+    </SoundProvider>
+  </ThemeProvider>
   );
 }

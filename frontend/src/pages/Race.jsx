@@ -3,9 +3,10 @@ import { useParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getRace, checkRaceStatus, getProblem, getVerdicts, forfeitRace } from "../api/races";
 import { useAuth } from "../context/AuthContext";
+import { useSound } from "../context/SoundContext";
 import PageLayout from "../components/layout/PageLayout";
-
 import toast from "react-hot-toast";
+
 
 const AVATARS = {
   avatar1: "⚡", avatar2: "🔥", avatar3: "💀", avatar4: "🎯",
@@ -64,7 +65,30 @@ const CP_QUOTES = [
 
 
 // Client-side CF scraper — used when backend scraping fails
+function cleanLaTeX(html) {
+  if (!html) return "";
+  let clean = html
+    .replace(/\\gt/g, ">")
+    .replace(/\\lt/g, "<")
+    .replace(/\\ge/g, "≥")
+    .replace(/\\le/g, "≤")
+    .replace(/\\dots/g, "...")
+    .replace(/\\cdot/g, "·")
+    .replace(/\\ne/g, "≠")
+    .replace(/\\times/g, "×")
+    .replace(/\\to/g, "→")
+    .replace(/\\color\{[^}]*\}/g, "")
+    .replace(/\\texttt\{([^}]*)\}/g, "$1")
+    .replace(/\\text\{([^}]*)\}/g, "$1");
+
+  clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, '<code class="font-mono text-accent bg-accent/15 border border-accent/40 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
+  clean = clean.replace(/\$\$(.*?)\$\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/30 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
+  clean = clean.replace(/\$(.*?)\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/20 px-1 py-0.5 rounded text-xs">$1</code>');
+  return clean;
+}
+
 async function fetchCFStatementClientSide(contestId, index) {
+
   const cfUrl = `https://codeforces.com/contest/${contestId}/problem/${index}`;
   const encoded = encodeURIComponent(cfUrl);
   const proxies = [
@@ -91,24 +115,25 @@ async function fetchCFStatementClientSide(contestId, index) {
         doc.querySelector(".problemstatement") ||
         doc.querySelector(".ttypography");
       if (stDiv) {
-        // Fix relative image URLs
         stDiv.querySelectorAll("img").forEach((img) => {
           if (img.src && !img.src.startsWith("http"))
             img.src = "https://codeforces.com" + img.getAttribute("src");
         });
-        // Remove CF header block (title, constraints)
         const hdr = stDiv.querySelector(".header");
         if (hdr) hdr.remove();
-        return stDiv.innerHTML;
+        return cleanLaTeX(stDiv.innerHTML);
       }
     } catch (_) { /* try next */ }
   }
   return null;
 }
 
+
 export default function Race() {
   const { raceId } = useParams();
   const { user } = useAuth();
+  const { playVictory, playSadness } = useSound();
+
   const [race, setRace] = useState(null);
   const [problem, setProblem] = useState(null);
   const [clientHtml, setClientHtml] = useState(null);  // client-side scraped HTML
@@ -222,9 +247,17 @@ export default function Race() {
             if (updated.status === "finished") {
               clearInterval(timerRef.current);
               clearTimeout(pollRef.current);
+              if (updated.winner_id === user?.id) {
+                playVictory();
+              } else {
+                playSadness();
+              }
+
               setShowResult(true);
               return;
             }
+
+
           }
         }
       } catch (e) { /* ignore */ }

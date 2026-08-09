@@ -279,18 +279,20 @@ export default function Landing() {
             </motion.div>
           </section>
 
-          {/* ── Marquee ────────────────────────────────────── */}
-          <div className="border-y border-accent/25 bg-black/60 backdrop-blur-md overflow-hidden py-3 relative">
-            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-bg-primary to-transparent z-10" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-bg-primary to-transparent z-10" />
+          {/* ── Marquee Ticker ────────────────────────────────── */}
+          <div className="border-y-2 border-accent/40 bg-black/80 backdrop-blur-2xl overflow-hidden py-5 relative shadow-[0_0_25px_rgba(255,230,12,0.2)]">
+            <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-black via-black/80 to-transparent z-10" />
+            <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-black via-black/80 to-transparent z-10" />
             <div className="flex animate-marquee whitespace-nowrap">
               {[...marqueeItems, ...marqueeItems].map((item, i) => (
-                <span key={i} className="font-mono text-xs text-text-dim mx-8 tracking-wider font-bold">
-                  {item} <span className="text-accent mx-2">·</span>
+                <span key={i} className="font-mono text-sm sm:text-base text-text-primary mx-8 tracking-wider font-black flex items-center gap-3">
+                  <span className="w-2 h-2 rounded-full bg-accent animate-ping shadow-[0_0_10px_#ffe60c]" />
+                  {item} <span className="text-accent text-lg font-bold">⚡</span>
                 </span>
               ))}
             </div>
           </div>
+
 
           {/* ── Live Race Preview ──────────────────────────── */}
           <section className="max-w-4xl mx-auto px-4 py-20">

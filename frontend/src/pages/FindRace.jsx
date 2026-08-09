@@ -3,9 +3,12 @@ import { motion } from "framer-motion";
 import { useNavigate, Link } from "react-router-dom";
 import { joinQueue, getQueueStatus, leaveQueue, getQueueStats } from "../api/races";
 import { useAuth } from "../context/AuthContext";
+import { useSound } from "../context/SoundContext";
 import PageLayout from "../components/layout/PageLayout";
 
 export default function FindRace() {
+  const { playQueueFound } = useSound();
+
   const [phase, setPhase] = useState("idle"); // idle | searching | matched | timeout
   const [elapsed, setElapsed] = useState(0);
   const [band, setBand] = useState(100);
@@ -78,10 +81,13 @@ export default function FindRace() {
       const res = await joinQueue();
       if (res.status === "matched") {
         clearInterval(timerRef.current);
+        playQueueFound();
+
         setPhase("matched");
         setTimeout(() => navigate(`/race/${res.race_id}`), 500);
         return;
       }
+
     } catch (e) {
       setError(e.message || "Failed to join queue");
       setPhase("idle");
@@ -96,10 +102,13 @@ export default function FindRace() {
         const status = await getQueueStatus();
         if (status.status === "matched") {
           clearInterval(timerRef.current);
+          playQueueFound();
+
           setPhase("matched");
           setTimeout(() => navigate(`/race/${status.race_id}`), 500);
           return;
         }
+
         if (status.status === "timeout") {
           clearInterval(timerRef.current);
           setPhase("timeout");

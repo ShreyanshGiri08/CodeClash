@@ -216,7 +216,20 @@ async def get_problem_statement(contest_id: int, index: str) -> dict:
 
     # Clean Codeforces $$$ TeX math delimiters & LaTeX symbols
     raw_html = str(statement_div)
-    cleaned_html = raw_html.replace(r"\gt", ">").replace(r"\ge", "≥").replace(r"\le", "≤").replace(r"\dots", "...").replace(r"\cdot", "·").replace(r"\ne", "≠").replace(r"\times", "×")
+    cleaned_html = (
+        raw_html.replace(r"\gt", ">")
+        .replace(r"\lt", "<")
+        .replace(r"\ge", "≥")
+        .replace(r"\le", "≤")
+        .replace(r"\dots", "...")
+        .replace(r"\cdot", "·")
+        .replace(r"\ne", "≠")
+        .replace(r"\times", "×")
+        .replace(r"\to", "→")
+    )
+    cleaned_html = re.sub(r'\\color\{[^}]*\}', '', cleaned_html)
+    cleaned_html = re.sub(r'\\texttt\{([^}]*)\}', r'\1', cleaned_html)
+    cleaned_html = re.sub(r'\\text\{([^}]*)\}', r'\1', cleaned_html)
     cleaned_html = re.sub(
         r'\$\$\$(.*?)\$\$\$',
         r'<code class="font-mono text-accent bg-accent/15 border border-accent/40 px-1.5 py-0.5 rounded text-xs font-bold">\1</code>',
@@ -227,6 +240,12 @@ async def get_problem_statement(contest_id: int, index: str) -> dict:
         r'<code class="font-mono text-accent bg-accent/10 border border-accent/30 px-1.5 py-0.5 rounded text-xs font-bold">\1</code>',
         cleaned_html
     )
+    cleaned_html = re.sub(
+        r'\$(.*?)\$',
+        r'<code class="font-mono text-accent bg-accent/10 border border-accent/20 px-1 py-0.5 rounded text-xs">\1</code>',
+        cleaned_html
+    )
+
 
     title_el = statement_div.find("div", class_="title")
     title = title_el.text.strip() if title_el else f"Problem {contest_id}{index}"
