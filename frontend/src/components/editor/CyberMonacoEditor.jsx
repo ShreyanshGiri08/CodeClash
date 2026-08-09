@@ -1,7 +1,9 @@
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { useSound } from "../../context/SoundContext";
+import CPSnippetVault from "../common/CPSnippetVault";
 import toast from "react-hot-toast";
+
 
 const LANGUAGE_CONFIGS = {
   cpp: {
@@ -89,6 +91,44 @@ export default function CyberMonacoEditor({ initialCode = "", sampleInput = "", 
     setCode(newVal);
     if (onCodeChange) onCodeChange(newVal, lang);
   };
+
+  // SMART NON-DESTRUCTIVE SNIPPET INSERTION ENGINE
+  const handleSmartInsertSnippet = (snipObj) => {
+    const existing = code || "";
+    let updatedCode = existing;
+
+    if (snipObj.id === "fastio") {
+      if (existing.includes("sync_with_stdio")) {
+        toast("Fast I/O is already in your code!", { icon: "⚡" });
+        return;
+      }
+      if (existing.includes("main()")) {
+        const fastIoLines = "    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n";
+        updatedCode = existing.replace(/main\s*\([^)]*\)\s*\{/, (m) => m + "\n" + fastIoLines);
+        toast.success("⚡ Injected Fast I/O inside main()!");
+      } else {
+        updatedCode = snipObj.code;
+        toast.success("⚡ Fast I/O Template Loaded!");
+      }
+    } else {
+      const symbol = snipObj.id === "modpow" ? "modpow" : snipObj.id === "dsu" ? "struct DSU" : "struct SegTree";
+      if (existing.includes(symbol)) {
+        toast(`${snipObj.title} is already in your code!`, { icon: "⚠️" });
+        return;
+      }
+
+      if (existing.includes("main()")) {
+        updatedCode = existing.replace(/int\s+main\s*\(|main\s*\(/, (m) => snipObj.code + "\n\n" + m);
+        toast.success(`↙ Inserted ${snipObj.title} above main()!`);
+      } else {
+        updatedCode = snipObj.code + "\n\n" + existing;
+        toast.success(`↙ Inserted ${snipObj.title}!`);
+      }
+    }
+
+    handleCodeInput(updatedCode);
+  };
+
 
   // SMART AUTO-INDENTATION & KEY EVENT HANDLER
   const handleKeyDown = (e) => {
@@ -344,6 +384,7 @@ export default function CyberMonacoEditor({ initialCode = "", sampleInput = "", 
         <div className="flex items-center gap-2">
           <span className="text-accent text-xs font-black">⚡ IDE</span>
           <select
+
             value={lang}
             onChange={(e) => handleLangChange(e.target.value)}
             className="bg-[#08080a] border border-accent/50 text-accent text-xs font-bold px-3 py-1.5 rounded-lg outline-none cursor-pointer hover:border-accent"
@@ -354,7 +395,10 @@ export default function CyberMonacoEditor({ initialCode = "", sampleInput = "", 
               </option>
             ))}
           </select>
+          <CPSnippetVault onInsertSnippet={handleSmartInsertSnippet} />
+
         </div>
+
 
         {/* Action Tabs & Run Button */}
         <div className="flex items-center gap-2">

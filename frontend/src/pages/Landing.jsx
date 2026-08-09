@@ -335,16 +335,11 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* ── 4. How It Works Grid ──────────────────────────────── */}
+          {/* ── 4. How It Works Grid ──────────────── */}
           <section className="max-w-6xl mx-auto px-4 py-16">
-            <motion.h2
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              className="text-3xl sm:text-4xl font-black mb-12 text-center tracking-tight text-text-primary"
-            >
+            <h2 className="text-3xl sm:text-4xl font-black mb-12 text-center tracking-tight text-text-primary">
               HOW A RACE PLAYS OUT
-            </motion.h2>
+            </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {steps.map((step, i) => {
@@ -356,8 +351,8 @@ export default function Landing() {
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.1, duration: 0.5 }}
-                    whileHover={{ y: -6, scale: 1.02 }}
-                    className="bg-black/90 backdrop-blur-2xl border border-accent/30 rounded-2xl p-6 hover:border-accent transition-all shadow-2xl group flex flex-col justify-between"
+                    whileHover={{ y: -8, scale: 1.03 }}
+                    className="bg-black/90 backdrop-blur-2xl border border-accent/30 rounded-2xl p-6 hover:border-accent hover:shadow-[0_10px_30px_rgba(255,230,12,0.2)] transition-all shadow-2xl group flex flex-col justify-between"
                   >
                     <div>
                       <div className={`mb-4 ${step.color} opacity-90 group-hover:opacity-100 transition-opacity`}>
@@ -372,6 +367,8 @@ export default function Landing() {
               })}
             </div>
           </section>
+
+
 
           {/* ── 5. CTA Section ───────────────────────────────── */}
           <section className="border-t border-accent/25 py-20 text-center px-4 bg-black/50">

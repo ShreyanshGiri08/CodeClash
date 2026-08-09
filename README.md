@@ -8,10 +8,13 @@ CodeClash is a real-time, 1v1 competitive programming esports platform that pair
 
 ### Frontend
 - **Core**: React 18, Vite 5, React Router v6
-- **Styling & Motion**: Tailwind CSS v4, Vanilla CSS Custom Variables, Framer Motion (3D spring physics, layout animations, page transitions)
+- **Styling & Motion**: Tailwind CSS v4, Vanilla CSS Custom Variables, Framer Motion (3D spring physics, layout animations, cyber curtain page transitions with `AnimatePresence`)
+- **Global Command Palette**: `Ctrl + K` / `Cmd + K` instant search overlay (`CommandPalette.jsx`) for 1-click global route navigation and audio toggle
+- **CP Snippet Vault**: 1-click competitive programming template insertion (`CPSnippetVault.jsx`) featuring Fast I/O, Modular Exponentiation, DSU, and Segment Trees directly inside Monaco IDE
 - **Audio Synthesizer**: Custom Web Audio API synthesizer (`SoundContext.jsx`) utilizing low-latency Web Audio API Oscillators, GainNodes, and Chrome async context resolution (Zero external MP3/WAV assets)
 - **IDE Component**: Custom Code Editor (`CyberMonacoEditor.jsx`) supporting C++ 17, Python 3.10, Java 17, and JavaScript (Node.js 18) with smart auto-indentation and local compilation
 - **Notifications**: React Hot Toast
+
 
 ### Backend
 - **Framework**: FastAPI (Python 3.10+) running on Uvicorn ASGI server
@@ -77,8 +80,11 @@ flowchart TD
 
 ## Key Features & Verified Implementation Details
 
-### 1. Embedded Monaco Code Studio (`CyberMonacoEditor.jsx`)
+### 1. Embedded Monaco Code Studio (`CyberMonacoEditor.jsx`) & Smart Snippet Engine
 - **Multi-Language Selector**: Toggle between C++ 17 (g++), Python 3.10, Java 17, and JavaScript (Node.js 18) with language-specific starter boilerplates.
+- **Smart Non-Destructive CP Snippet Vault (`CPSnippetVault.jsx`)**: 1-click algorithm template insertion directly inside the Monaco header toolbar. Feature-rich smart code placement:
+  - `⚡ Fast I/O`: Injects `ios_base::sync_with_stdio(false); cin.tie(NULL);` directly inside `main()`.
+  - `🌐 DSU`, `🔢 ModPow`, `🌲 SegTree`: Injects helper structs and functions **ABOVE `int main()`** without overwriting your existing solution code.
 - **Smart Enter Key Auto-Indentation**: Preserves leading indentation on newline and automatically indents +4 spaces when opening blocks containing `{`, `:`, or `(`.
 - **Auto-Bracket Completion**: Automatic pair completion for `()`, `{}`, `[]`, `""`, and `''`.
 - **Tab Key Handling**: 4-space indentation handling.
@@ -118,6 +124,17 @@ flowchart TD
 
 ### 7. Direct Friend Challenges (`Challenge.jsx`, `JoinChallenge.jsx`)
 - Create custom challenge rooms with specific problem ratings and durations, generating shareable invite tokens (`/challenge/TOKEN`).
+
+### 8. Global Cyber Command Palette — `Ctrl + K` / `⌘K` (`CommandPalette.jsx`)
+- Universal glassmorphic command modal with 3D rotating SVG vector icons, generous layout spacing, and automatic keyboard viewport scroll-tracking (`scrollIntoView`).
+- Allows instant 1-click navigation across all pages and audio toggle.
+
+### 9. Cyber Curtain Page Transitions (`PageTransition.jsx`)
+- Framer Motion `AnimatePresence` route synchronization with cubic-bezier drift (`y: 14px -> 0px`), scale scaling (`0.985 -> 1.0`), and Gaussian blur filter sweeps (`blur(5px) -> blur(0px)`).
+
+### 10. System Architecture & Topology Specifications (`docs/ARCHITECTURE.md`)
+- Comprehensive low-level architecture specs including Mermaid topology flowcharts, 1v1 WebSocket sequence diagrams, Elo rating recalculation math formulas ($K=32$), and multi-proxy failover resilience (`corsproxy.io` $\rightarrow$ `allorigins.win` $\rightarrow$ `codetabs.com`).
+
 
 ---
 

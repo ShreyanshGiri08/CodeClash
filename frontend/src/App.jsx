@@ -1,8 +1,10 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { SoundProvider } from "./context/SoundContext";
 import { Toaster } from "react-hot-toast";
+
 
 
 // Pages
@@ -43,37 +45,44 @@ function PublicAuthRoute({ children }) {
 
 
 function AppRoutes() {
+  const location = useLocation();
+
   return (
-    <Routes>
-      {/* Public Pages */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/signup" element={<PublicAuthRoute><Signup /></PublicAuthRoute>} />
-      <Route path="/login" element={<PublicAuthRoute><Login /></PublicAuthRoute>} />
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Public Pages */}
+        <Route path="/" element={<Landing />} />
+        <Route path="/signup" element={<PublicAuthRoute><Signup /></PublicAuthRoute>} />
+        <Route path="/login" element={<PublicAuthRoute><Login /></PublicAuthRoute>} />
 
-      <Route path="/practice" element={<Practice />} />
-      <Route path="/analytics" element={<Analytics />} />
-      <Route path="/leaderboard" element={<Leaderboard />} />
-      <Route path="/achievements" element={<Badges />} />
-      <Route path="/docs" element={<Docs />} />
-      <Route path="/challenge/:token" element={<JoinChallenge />} />
+        <Route path="/practice" element={<Practice />} />
+        <Route path="/analytics" element={<Analytics />} />
+        <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/achievements" element={<Badges />} />
+        <Route path="/docs" element={<Docs />} />
+        <Route path="/challenge/:token" element={<JoinChallenge />} />
 
-      {/* Protected Pages */}
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-      <Route path="/race/find" element={<ProtectedRoute><FindRace /></ProtectedRoute>} />
-      <Route path="/race/:raceId" element={<ProtectedRoute><Race /></ProtectedRoute>} />
-      <Route path="/race/:raceId/summary" element={<ProtectedRoute><MatchDetails /></ProtectedRoute>} />
-      <Route path="/challenge" element={<ProtectedRoute><Challenge /></ProtectedRoute>} />
-      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-      <Route path="/link-cf" element={<ProtectedRoute><LinkCF /></ProtectedRoute>} />
+        {/* Protected Pages */}
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/race/find" element={<ProtectedRoute><FindRace /></ProtectedRoute>} />
+        <Route path="/race/:raceId" element={<ProtectedRoute><Race /></ProtectedRoute>} />
+        <Route path="/race/:raceId/summary" element={<ProtectedRoute><MatchDetails /></ProtectedRoute>} />
+        <Route path="/challenge" element={<ProtectedRoute><Challenge /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+        <Route path="/link-cf" element={<ProtectedRoute><LinkCF /></ProtectedRoute>} />
 
-      {/* 404 */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
+        {/* 404 */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </AnimatePresence>
   );
 }
 
 
 
+
+
+import CommandPalette from "./components/common/CommandPalette";
 
 export default function App() {
   return (
@@ -81,8 +90,10 @@ export default function App() {
       <SoundProvider>
         <BrowserRouter>
           <AuthProvider>
+            <CommandPalette />
             <AppRoutes />
             <Toaster
+
 
             position="bottom-right"
             toastOptions={{

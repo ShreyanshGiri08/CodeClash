@@ -130,25 +130,46 @@ const CP_QUOTES = [
 // Client-side CF scraper — used when backend scraping fails
 function cleanLaTeX(html) {
   if (!html) return "";
-  let clean = html
-    .replace(/\\gt/g, ">")
-    .replace(/\\lt/g, "<")
-    .replace(/\\ge/g, "≥")
-    .replace(/\\le/g, "≤")
-    .replace(/\\dots/g, "...")
-    .replace(/\\cdot/g, "·")
-    .replace(/\\ne/g, "≠")
-    .replace(/\\times/g, "×")
-    .replace(/\\to/g, "→")
-    .replace(/\\color\{[^}]*\}/g, "")
-    .replace(/\\texttt\{([^}]*)\}/g, "$1")
-    .replace(/\\text\{([^}]*)\}/g, "$1");
+  try {
+    let clean = html
+      .replace(/\\gt/g, ">")
+      .replace(/\\lt/g, "<")
+      .replace(/\\ge/g, "≥")
+      .replace(/\\le/g, "≤")
+      .replace(/\\dots/g, "...")
+      .replace(/\\cdot/g, "·")
+      .replace(/\\ne/g, "≠")
+      .replace(/\\times/g, "×")
+      .replace(/\\to/g, "→")
+      .replace(/\\color\{[^}]*\}/g, "")
+      .replace(/\\texttt\{([^}]*)\}/g, "$1")
+      .replace(/\\text\{([^}]*)\}/g, "$1");
 
-  clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, '<code class="font-mono text-accent bg-accent/15 border border-accent/40 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
-  clean = clean.replace(/\$\$(.*?)\$\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/30 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
-  clean = clean.replace(/\$(.*?)\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/20 px-1 py-0.5 rounded text-xs">$1</code>');
-  return clean;
+    clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, '<code class="font-mono text-accent bg-accent/15 border border-accent/40 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
+    clean = clean.replace(/\$\$(.*?)\$\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/30 px-1.5 py-0.5 rounded text-xs font-bold">$1</code>');
+    clean = clean.replace(/\$(.*?)\$/g, '<code class="font-mono text-accent bg-accent/10 border border-accent/20 px-1 py-0.5 rounded text-xs">$1</code>');
+
+    if (!clean.includes("📋 Copy Input")) {
+      clean = clean.replace(
+        /<div class="input">/g,
+        `<div class="input relative group"><button onclick="try{const txt=this.parentElement.querySelector('pre').innerText; navigator.clipboard.writeText(txt); const b=this; b.innerText='✓ Copied!'; setTimeout(()=>b.innerText='📋 Copy Input', 1500);}catch(_){}" style="position:absolute; top:6px; right:6px; z-index:20;" class="bg-accent/20 hover:bg-accent hover:text-black border border-accent/60 text-accent font-mono text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-md">📋 Copy Input</button>`
+      );
+    }
+
+    if (!clean.includes("📋 Copy Output")) {
+      clean = clean.replace(
+        /<div class="output">/g,
+        `<div class="output relative group"><button onclick="try{const txt=this.parentElement.querySelector('pre').innerText; navigator.clipboard.writeText(txt); const b=this; b.innerText='✓ Copied!'; setTimeout(()=>b.innerText='📋 Copy Output', 1500);}catch(_){}" style="position:absolute; top:6px; right:6px; z-index:20;" class="bg-status-live/20 hover:bg-status-live hover:text-black border border-status-live/60 text-status-live font-mono text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-md">📋 Copy Output</button>`
+      );
+    }
+
+    return clean;
+
+  } catch (e) {
+    return html;
+  }
 }
+
 
 async function fetchCFStatementClientSide(contestId, index) {
 
@@ -161,8 +182,12 @@ async function fetchCFStatementClientSide(contestId, index) {
   ];
   for (const proxy of proxies) {
     try {
-      const resp = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) continue;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const resp = await fetch(proxy, { signal: controller.signal }).catch(() => null);
+      clearTimeout(timeoutId);
+      if (!resp || !resp.ok) continue;
+
       let html;
       if (proxy.includes("allorigins")) {
         const data = await resp.json();
@@ -184,7 +209,8 @@ async function fetchCFStatementClientSide(contestId, index) {
         });
         const hdr = stDiv.querySelector(".header");
         if (hdr) hdr.remove();
-        return cleanLaTeX(stDiv.innerHTML);
+        return stDiv.innerHTML;
+
       }
     } catch (_) { /* try next */ }
   }
@@ -205,7 +231,9 @@ export default function Race() {
   const [elapsed, setElapsed] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState(null);
   const [forfeiting, setForfeiting] = useState(false);
+
   const [quoteIndex, setQuoteIndex] = useState(0);
   const pollRef = useRef(null);
   const timerRef = useRef(null);
@@ -392,14 +420,15 @@ export default function Race() {
   async function handleCheckNow() {
     if (checking) return;
     setChecking(true);
+    setCheckError(null);
 
-    let secondsLeft = 30;
-    const toastId = toast.loading(`Searching Codeforces for your submission... (${secondsLeft}s remaining)`);
+    let secondsLeft = 12;
+    const toastId = toast.loading(`Searching Codeforces for your submission... (${secondsLeft}s)`);
 
     const timerInterval = setInterval(() => {
       secondsLeft = Math.max(0, secondsLeft - 3);
       if (secondsLeft > 0) {
-        toast.loading(`Searching Codeforces for your submission... (${secondsLeft}s remaining)`, { id: toastId });
+        toast.loading(`Searching Codeforces for your submission... (${secondsLeft}s)`, { id: toastId });
       } else {
         toast.loading(`Finalizing search on Codeforces...`, { id: toastId });
       }
@@ -408,9 +437,10 @@ export default function Race() {
     let foundAccepted = false;
 
     try {
-      for (let attempt = 0; attempt < 10; attempt++) {
+      // 4 attempts (12 seconds max duration)
+      for (let attempt = 0; attempt < 4; attempt++) {
         try {
-          const updated = await checkRaceStatus(raceId);
+          const updated = await checkRaceStatus(raceId).catch(() => null);
           if (updated && updated.id) {
             setRace(updated);
             if (updated.status === "finished") {
@@ -419,12 +449,14 @@ export default function Race() {
               break;
             }
           }
-          const v = await getVerdicts(raceId);
+          const v = await getVerdicts(raceId).catch(() => null);
           if (v && Array.isArray(v.player1)) setVerdicts(v);
-        } catch (e) {
+        } catch (_) {
           /* continue searching */
         }
-        await new Promise((resolve) => setTimeout(resolve, 3000));
+        if (attempt < 3) {
+          await new Promise((resolve) => setTimeout(resolve, 2500));
+        }
       }
     } finally {
       clearInterval(timerInterval);
@@ -433,11 +465,16 @@ export default function Race() {
     }
 
     if (foundAccepted) {
+      setCheckError(null);
       toast.success("🎉 Accepted submission detected! Victory!", { duration: 6000 });
     } else {
-      toast.error("Oops! Couldn't find an Accepted submission on Codeforces yet. Make sure you submitted under your handle and try again!", { duration: 7000 });
+      const msg = "Oops! Couldn't find an Accepted (AC) submission on Codeforces yet. Make sure you submitted under your handle and try again!";
+      setCheckError(msg);
+      toast.error(msg, { duration: 7000 });
     }
   }
+
+
 
 
   async function handleForfeit() {
@@ -675,76 +712,26 @@ export default function Race() {
                         <>✓ I SUBMITTED, CHECK NOW</>
                       )}
                     </button>
+
+                    {checkError && (
+                      <div className="p-3.5 rounded-xl bg-status-error/15 border border-status-error/60 text-status-error font-mono text-[11px] space-y-1 shadow-lg animate-pulse col-span-1 sm:col-span-2">
+                        <p className="font-extrabold flex items-center gap-1.5 text-xs">
+                          <span>⚠️</span> SUBMISSION NOT DETECTED YET
+                        </p>
+                        <p className="leading-relaxed opacity-95">{checkError}</p>
+                      </div>
+                    )}
                   </div>
+
                 </div>
               )}
 
-              {/* Embedded Monaco Code Studio in Race Room — Massive 750px Height! */}
-              <div className="flex-1 min-h-[750px] flex flex-col">
+              <div className="flex-1 min-h-[620px] flex flex-col">
                 <CyberMonacoEditor />
               </div>
-            </div>
 
-
-
-
-
-              {/* Race Clock + Matchup Header */}
-              <div className="bg-bg-card/90 backdrop-blur-2xl border border-border/80 rounded-2xl overflow-hidden shadow-2xl">
-                <div className="flex justify-between items-center px-5 py-3 bg-bg-elevated/70 border-b border-border/80">
-                  <span className="font-mono text-xs font-bold text-text-dim tracking-wider">// RACE CLOCK & MATCHUP</span>
-                  <span className="font-mono text-xs flex items-center gap-2">
-                    <span className={`w-2.5 h-2.5 rounded-full ${finished ? "bg-text-muted" : "bg-status-live animate-pulse"}`} />
-                    <span className={`font-extrabold ${finished ? "text-text-muted" : "text-status-live"}`}>
-                      {finished ? "FINISHED" : "MATCH IN PROGRESS"}
-                    </span>
-                  </span>
-                </div>
-
-                <div className="p-5">
-                  {/* Digital Clock display */}
-                  <div className="flex items-center justify-between bg-bg-input/70 border border-border/60 p-4 rounded-xl shadow-inner">
-                    <div>
-                      <p className="font-mono text-xs text-text-dim mb-1 font-bold">⏱ REMAINING TIME</p>
-                      <p className="font-mono text-4xl sm:text-5xl font-black text-text-primary tracking-tight">
-                        {finished ? "00:00" : formatTime(remaining)}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-mono text-xs text-text-dim mb-1 font-bold">ELAPSED</p>
-                      <p className="font-mono text-xl font-bold text-accent">
-                        {formatTime(realElapsed)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Player Cards */}
-                  <div className="grid grid-cols-2 gap-3 pt-3">
-                    <div className="p-3 rounded-xl bg-accent/10 border border-accent/30 flex items-center gap-3">
-                      <span className="text-xl">⚡</span>
-                      <div className="overflow-hidden">
-                        <p className="text-[10px] text-text-muted font-mono font-bold tracking-wider">YOU</p>
-                        <p className="font-mono font-extrabold text-xs text-accent truncate">
-                          {isP1 ? race.player1_handle : race.player2_handle}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="p-3 rounded-xl bg-status-error/10 border border-status-error/30 flex items-center gap-3">
-                      <span className="text-xl">⚔️</span>
-                      <div className="overflow-hidden">
-                        <p className="text-[10px] text-text-muted font-mono font-bold tracking-wider">OPPONENT</p>
-                        <p className="font-mono font-extrabold text-xs text-status-error truncate">
-                          {isP1 ? race.player2_handle : race.player1_handle}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* 3rd: Full-Width Live Submission Stream Panel */}
-              <div className="bg-black/80 backdrop-blur-2xl border border-border/80 rounded-2xl overflow-hidden shadow-2xl flex-1 flex flex-col">
+              {/* Full-Width Live Submission Stream Panel */}
+              <div className="bg-black/80 backdrop-blur-2xl border border-border/80 rounded-2xl overflow-hidden shadow-2xl flex flex-col">
                 <div className="flex justify-between items-center px-5 py-3 bg-bg-elevated/70 border-b border-border/80">
                   <span className="font-mono text-xs font-bold text-text-dim tracking-wider">// LIVE SUBMISSION STREAM</span>
                   <span className="font-mono text-xs text-status-live flex items-center gap-1.5 font-bold">
@@ -753,7 +740,7 @@ export default function Race() {
                   </span>
                 </div>
 
-                <div className="p-4 flex-1 overflow-y-auto max-h-56 custom-scrollbar space-y-4">
+                <div className="p-4 flex-1 overflow-y-auto max-h-48 custom-scrollbar space-y-4">
                   {/* My submissions */}
                   <div>
                     <p className="font-mono text-[11px] font-extrabold text-accent mb-2 tracking-wider flex items-center gap-1.5">
@@ -800,10 +787,7 @@ export default function Race() {
                     )}
                   </div>
                 </div>
-
               </div>
-
-
 
               {/* Victory / Result Screen Modal */}
               <AnimatePresence>
@@ -855,7 +839,7 @@ export default function Race() {
                         <div className="text-center">
                           <p className="text-sm font-extrabold text-text-primary">{isP1 ? race.player2_handle : race.player1_handle}</p>
                           <p className={`font-mono text-xl font-extrabold ${
-                            (isP1 ? (race.p2_elo_after - race.p2_elo_before) : (race.p1_elo_after - race.p1_elo_before)) > 0
+                            (isP1 ? (race.p2_elo_after - race.p1_elo_before) : (race.p1_elo_after - race.p1_elo_before)) > 0
                               ? "text-status-live" : (race.p1_elo_after === race.p1_elo_before ? "text-text-muted" : "text-status-error")
                           }`}>
                             {isP1
@@ -875,11 +859,11 @@ export default function Race() {
                   </motion.div>
                 )}
               </AnimatePresence>
-
             </div>
           </div>
         </div>
       </div>
+
     </PageLayout>
   );
 }

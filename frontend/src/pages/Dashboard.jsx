@@ -71,16 +71,55 @@ export default function Dashboard() {
   if (authLoading || (dataLoading && user)) {
     return (
       <PageLayout>
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10">
-          <div className="skeleton h-10 w-48 mb-8" />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-10">
-            {[1, 2, 3, 4].map((i) => <SkeletonCard key={i} />)}
+        <div className="relative min-h-[calc(100vh-4rem)] bg-transparent overflow-hidden">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 relative z-10 space-y-8 animate-pulse">
+            {/* Header User Profile Banner Skeleton */}
+            <div className="bg-black/70 border border-accent/20 rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-accent/20 border border-accent/40" />
+                <div className="space-y-2">
+                  <div className="h-6 w-44 bg-accent/20 rounded-md" />
+                  <div className="h-4 w-32 bg-border/60 rounded-md" />
+                </div>
+              </div>
+              <div className="h-10 w-28 bg-accent/20 rounded-xl" />
+            </div>
+
+            {/* 4 Stat Cards Grid Skeleton */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              {[1, 2, 3, 4].map((i) => (
+                <div key={i} className="bg-black/70 border border-border/60 rounded-xl p-5 space-y-2">
+                  <div className="h-3 w-20 bg-border/60 rounded" />
+                  <div className="h-8 w-16 bg-accent/20 rounded-md" />
+                </div>
+              ))}
+            </div>
+
+            {/* Action Buttons Skeleton */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="h-14 bg-accent/20 rounded-xl" />
+              <div className="h-14 bg-border/60 rounded-xl" />
+            </div>
+
+            {/* Rating Graph Card Skeleton */}
+            <div className="bg-black/70 border border-accent/20 rounded-2xl p-6 space-y-4">
+              <div className="h-5 w-48 bg-accent/20 rounded" />
+              <div className="h-64 bg-border/40 rounded-xl" />
+            </div>
+
+            {/* Match History Table Skeleton */}
+            <div className="bg-black/70 border border-border/60 rounded-2xl p-6 space-y-3">
+              <div className="h-5 w-40 bg-accent/20 rounded" />
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-12 bg-border/40 rounded-xl" />
+              ))}
+            </div>
           </div>
-          <div className="skeleton h-48 rounded-lg" />
         </div>
       </PageLayout>
     );
   }
+
 
 
   const winRate = user.races_played > 0

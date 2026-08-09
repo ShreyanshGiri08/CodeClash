@@ -59,35 +59,14 @@ export default function FloatingCyberBackground() {
             ease: "easeInOut",
           }}
           style={{ left: item.x, top: item.y }}
-          className={`absolute font-mono text-xs font-black px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 ${item.color} shadow-[0_0_20px_rgba(255,255,255,0.08)]`}
+          className={`absolute font-mono text-xs sm:text-sm font-bold tracking-widest ${item.color} select-none pointer-events-none drop-shadow-[0_0_12px_rgba(255,230,12,0.3)] bg-bg-card/40 backdrop-blur-md px-3 py-1.5 rounded-xl border border-white/5`}
         >
           {item.text}
         </motion.div>
       ))}
 
-      {/* ── Floating Cyber Dust Particles ────────────────── */}
-      {Array.from({ length: 14 }).map((_, i) => (
-        <motion.div
-          key={`dust-${i}`}
-          animate={{
-            y: [0, -120],
-            x: [0, (i % 2 === 0 ? 30 : -30)],
-            opacity: [0, 0.8, 0],
-            scale: [0.8, 1.4, 0.8],
-          }}
-          transition={{
-            duration: 8 + (i % 5) * 2,
-            repeat: Infinity,
-            delay: i * 0.7,
-            ease: "easeInOut",
-          }}
-          style={{
-            left: `${(i * 7) % 95}%`,
-            top: `${20 + (i * 6) % 70}%`,
-          }}
-          className={`absolute w-1.5 h-1.5 rounded-full ${i % 3 === 0 ? 'bg-accent shadow-[0_0_10px_#ffe60c]' : i % 3 === 1 ? 'bg-cyan-400 shadow-[0_0_10px_#22d3ee]' : 'bg-purple-400 shadow-[0_0_10px_#c084fc]'}`}
-        />
-      ))}
+      {/* ── Cyber Neon Grid Overlay Lines ────────────────── */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,230,12,0.03)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,230,12,0.03)_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] pointer-events-none" />
     </div>
   );
 }

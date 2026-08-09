@@ -5,7 +5,9 @@ import PageLayout from "../components/layout/PageLayout";
 import AntigravityCyberBackground from "../components/common/AntigravityCyberBackground";
 import toast from "react-hot-toast";
 import { useSound } from "../context/SoundContext";
+import { useAuth } from "../context/AuthContext";
 import CyberMonacoEditor from "../components/editor/CyberMonacoEditor";
+
 
 
 
@@ -26,81 +28,92 @@ const TAGS = [
 // Clean Codeforces TeX delimiters & LaTeX math symbols
 function cleanLaTeX(html) {
   if (!html) return "";
-  let clean = html;
+  try {
+    let clean = html;
 
-  // 1. Daggers, stars & special superscript symbols
-  clean = clean.replace(/\\\^\{\\dagger\}/g, "<sup>†</sup>");
-  clean = clean.replace(/\^\{\\dagger\}/g, "<sup>†</sup>");
-  clean = clean.replace(/\^\\dagger/g, "<sup>†</sup>");
-  clean = clean.replace(/\\dagger/g, "†");
-  clean = clean.replace(/\^\{\\ddagger\}/g, "<sup>‡</sup>");
-  clean = clean.replace(/\\ddagger/g, "‡");
-  clean = clean.replace(/\^\{\\star\}/g, "<sup>*</sup>");
-  clean = clean.replace(/\\star/g, "*");
+    // 1. Daggers, stars & special superscript symbols
+    clean = clean.replace(/\\\^\{\\dagger\}/g, "<sup>†</sup>");
+    clean = clean.replace(/\^\{\\dagger\}/g, "<sup>†</sup>");
+    clean = clean.replace(/\^\\dagger/g, "<sup>†</sup>");
+    clean = clean.replace(/\\dagger/g, "†");
+    clean = clean.replace(/\^\{\\ddagger\}/g, "<sup>‡</sup>");
+    clean = clean.replace(/\\ddagger/g, "‡");
+    clean = clean.replace(/\^\{\\star\}/g, "<sup>*</sup>");
+    clean = clean.replace(/\\star/g, "*");
 
-  // 2. Math operators & Greek letters
-  clean = clean.replace(/\\sum_\{([^}]+)\}\^\{([^}]+)\}/g, "∑<sub>$1</sub><sup>$2</sup> ");
-  clean = clean.replace(/\\sum_\{([^}]+)\}/g, "∑<sub>$1</sub> ");
-  clean = clean.replace(/\\sum/g, "∑");
+    // 2. Math operators & Greek letters
+    clean = clean.replace(/\\sum_\{([^}]+)\}\^\{([^}]+)\}/g, "∑<sub>$1</sub><sup>$2</sup> ");
+    clean = clean.replace(/\\sum_\{([^}]+)\}/g, "∑<sub>$1</sub> ");
+    clean = clean.replace(/\\sum/g, "∑");
 
-  clean = clean.replace(/\\max_\{([^}]+)\}\^\{([^}]+)\}/g, "max<sub>$1</sub><sup>$2</sup> ");
-  clean = clean.replace(/\\max_\{([^}]+)\}/g, "max<sub>$1</sub> ");
-  clean = clean.replace(/\\max/g, "max");
+    clean = clean.replace(/\\max_\{([^}]+)\}\^\{([^}]+)\}/g, "max<sub>$1</sub><sup>$2</sup> ");
+    clean = clean.replace(/\\max_\{([^}]+)\}/g, "max<sub>$1</sub> ");
+    clean = clean.replace(/\\max/g, "max");
 
-  clean = clean.replace(/\\min_\{([^}]+)\}\^\{([^}]+)\}/g, "min<sub>$1</sub><sup>$2</sup> ");
-  clean = clean.replace(/\\min_\{([^}]+)\}/g, "min<sub>$1</sub> ");
-  clean = clean.replace(/\\min/g, "min");
+    clean = clean.replace(/\\min_\{([^}]+)\}\^\{([^}]+)\}/g, "min<sub>$1</sub><sup>$2</sup> ");
+    clean = clean.replace(/\\min_\{([^}]+)\}/g, "min<sub>$1</sub> ");
+    clean = clean.replace(/\\min/g, "min");
 
-  clean = clean.replace(/\\cdot/g, "·");
-  clean = clean.replace(/\\times/g, "×");
-  clean = clean.replace(/\\rightarrow|\\to/g, "→");
-  clean = clean.replace(/\\leftarrow/g, "←");
-  clean = clean.replace(/\\Rightarrow/g, "⇒");
-  clean = clean.replace(/\\Leftarrow/g, "⇐");
-  clean = clean.replace(/\\gt/g, ">");
-  clean = clean.replace(/\\lt/g, "<");
-  clean = clean.replace(/\\ge/g, "≥");
-  clean = clean.replace(/\\le/g, "≤");
-  clean = clean.replace(/\\ne/g, "≠");
-  clean = clean.replace(/\\dots/g, "...");
-  clean = clean.replace(/\\infty/g, "∞");
-  clean = clean.replace(/\\bmod/g, "mod");
-  clean = clean.replace(/\\gcd/g, "gcd");
+    clean = clean.replace(/\\cdot/g, "·");
+    clean = clean.replace(/\\times/g, "×");
+    clean = clean.replace(/\\rightarrow|\\to/g, "→");
+    clean = clean.replace(/\\leftarrow/g, "←");
+    clean = clean.replace(/\\Rightarrow/g, "⇒");
+    clean = clean.replace(/\\Leftarrow/g, "⇐");
+    clean = clean.replace(/\\gt/g, ">");
+    clean = clean.replace(/\\lt/g, "<");
+    clean = clean.replace(/\\ge/g, "≥");
+    clean = clean.replace(/\\le/g, "≤");
+    clean = clean.replace(/\\ne/g, "≠");
+    clean = clean.replace(/\\dots/g, "...");
+    clean = clean.replace(/\\infty/g, "∞");
+    clean = clean.replace(/\\bmod/g, "mod");
+    clean = clean.replace(/\\gcd/g, "gcd");
 
-  // 3. Braces, parentheses & brackets
-  clean = clean.replace(/\\\{/g, "{").replace(/\\\}/g, "}");
-  clean = clean.replace(/\\left\(/g, "(").replace(/\\right\)/g, ")");
-  clean = clean.replace(/\\left\[/g, "[").replace(/\\right\]/g, "]");
+    // 3. Braces, parentheses & brackets
+    clean = clean.replace(/\\\{/g, "{").replace(/\\\}/g, "}");
+    clean = clean.replace(/\\left\(/g, "(").replace(/\\right\)/g, ")");
+    clean = clean.replace(/\\left\[/g, "[").replace(/\\right\]/g, "]");
 
-  // 4. Subscripts & Superscripts (e.g. p_i, p_j, a_i)
-  clean = clean.replace(/([a-zA-Z0-9])_([a-zA-Z0-9])/g, "$1<sub>$2</sub>");
-  clean = clean.replace(/([a-zA-Z0-9])_\{([^}]+)\}/g, "$1<sub>$2</sub>");
+    // 4. Subscripts & Superscripts (e.g. p_i, p_j, a_i)
+    clean = clean.replace(/([a-zA-Z0-9])_([a-zA-Z0-9])/g, "$1<sub>$2</sub>");
+    clean = clean.replace(/([a-zA-Z0-9])_\{([^}]+)\}/g, "$1<sub>$2</sub>");
 
-  // 5. Clean up Codeforces $$$math$$$ wrappers
-  clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, (match, inner) => {
-    let content = inner.trim();
-    if (content.startsWith("[") && content.endsWith("]")) {
-      return `<code class="font-mono text-amber-300 font-bold bg-amber-400/10 border border-amber-400/25 px-1.5 py-0.5 rounded">${content}</code>`;
+    // 5. Clean up Codeforces $$$math$$$ wrappers
+    clean = clean.replace(/\$\$\$(.*?)\$\$\$/g, (match, inner) => {
+      let content = inner.trim();
+      if (content.startsWith("[") && content.endsWith("]")) {
+        return `<code class="font-mono text-amber-300 font-bold bg-amber-400/10 border border-amber-400/25 px-1.5 py-0.5 rounded">${content}</code>`;
+      }
+      return `<span class="font-mono text-accent font-semibold px-0.5">${content}</span>`;
+    });
+
+    clean = clean.replace(/\$\$(.*?)\$\$/g, '<span class="font-mono text-accent font-semibold px-0.5">$1</span>');
+    clean = clean.replace(/\$(.*?)\$/g, '<span class="font-mono text-accent font-semibold px-0.5">$1</span>');
+
+    // 6. Add 1-click Copy buttons to Codeforces sample input and output boxes
+    if (!clean.includes("📋 Copy Input")) {
+      clean = clean.replace(
+        /<div class="input">/g,
+        `<div class="input relative group"><button onclick="try{const txt=this.parentElement.querySelector('pre').innerText; navigator.clipboard.writeText(txt); const b=this; b.innerText='✓ Copied!'; setTimeout(()=>b.innerText='📋 Copy Input', 1500);}catch(_){}" style="position:absolute; top:6px; right:6px; z-index:20;" class="bg-accent/20 hover:bg-accent hover:text-black border border-accent/60 text-accent font-mono text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-md">📋 Copy Input</button>`
+      );
     }
-    return `<span class="font-mono text-accent font-semibold px-0.5">${content}</span>`;
-  });
 
-  clean = clean.replace(/\$\$(.*?)\$\$/g, '<span class="font-mono text-accent font-semibold px-0.5">$1</span>');
-  clean = clean.replace(/\$(.*?)\$/g, '<span class="font-mono text-accent font-semibold px-0.5">$1</span>');
+    if (!clean.includes("📋 Copy Output")) {
+      clean = clean.replace(
+        /<div class="output">/g,
+        `<div class="output relative group"><button onclick="try{const txt=this.parentElement.querySelector('pre').innerText; navigator.clipboard.writeText(txt); const b=this; b.innerText='✓ Copied!'; setTimeout(()=>b.innerText='📋 Copy Output', 1500);}catch(_){}" style="position:absolute; top:6px; right:6px; z-index:20;" class="bg-status-live/20 hover:bg-status-live hover:text-black border border-status-live/60 text-status-live font-mono text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-md">📋 Copy Output</button>`
+      );
+    }
 
-  // 6. Add 1-click Copy buttons to Codeforces sample input and output boxes
-  clean = clean.replace(
-    /<div class="input">/g,
-    '<div class="input relative group"><button onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\'pre\').innerText); const btn=this; btn.innerText=\'✓ Copied!\'; setTimeout(() => btn.innerText=\'📋 Copy Input\', 1500);" class="absolute top-2 right-2 bg-accent/20 border border-accent/60 text-accent font-mono text-[10px] font-black px-2.5 py-1 rounded-lg cursor-pointer hover:bg-accent hover:text-black transition-all shadow-md z-20">📋 Copy Input</button>'
-  );
 
-  clean = clean.replace(
-    /<div class="output">/g,
-    '<div class="output relative group"><button onclick="navigator.clipboard.writeText(this.parentElement.querySelector(\'pre\').innerText); const btn=this; btn.innerText=\'✓ Copied!\'; setTimeout(() => btn.innerText=\'📋 Copy Output\', 1500);" class="absolute top-2 right-2 bg-status-live/20 border border-status-live/60 text-status-live font-mono text-[10px] font-black px-2.5 py-1 rounded-lg cursor-pointer hover:bg-status-live hover:text-black transition-all shadow-md z-20">📋 Copy Output</button>'
-  );
 
-  return clean;
+    return clean;
+  } catch (e) {
+    return html;
+  }
 }
+
 
 
 
@@ -116,8 +129,12 @@ async function fetchCFStatementClientSide(contestId, index) {
   ];
   for (const proxy of proxies) {
     try {
-      const resp = await fetch(proxy, { signal: AbortSignal.timeout(8000) });
-      if (!resp.ok) continue;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const resp = await fetch(proxy, { signal: controller.signal }).catch(() => null);
+      clearTimeout(timeoutId);
+      if (!resp || !resp.ok) continue;
+
       let html;
       if (proxy.includes("allorigins")) {
         const data = await resp.json();
@@ -139,7 +156,8 @@ async function fetchCFStatementClientSide(contestId, index) {
         });
         const hdr = stDiv.querySelector(".header");
         if (hdr) hdr.remove();
-        return cleanLaTeX(stDiv.innerHTML);
+        return stDiv.innerHTML;
+
       }
     } catch (_) { /* try next */ }
   }
@@ -196,7 +214,9 @@ async function fetchRealCFProblem(targetRating, selectedTags) {
 }
 
 export default function Practice() {
-  const { playVictory, playSadness, playSoftBlip } = useSound();
+  const { user } = useAuth();
+  const { playVictory, playSadness, playAction } = useSound();
+
   const [rating, setRating] = useState(1200);
   const [selectedTags, setSelectedTags] = useState(["dp"]);
   const [duration, setDuration] = useState(30);
@@ -206,7 +226,66 @@ export default function Practice() {
   const [statementHtml, setStatementHtml] = useState(null);
   const [loadingProblem, setLoadingProblem] = useState(false);
   const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState(null);
   const timerRef = useRef(null);
+
+  // 1. Session Persistence & Mount Recovery (Auto-purge sessions older than 2 hours)
+  useEffect(() => {
+    try {
+      const savedSession = localStorage.getItem("codeclash_practice_session");
+      if (savedSession) {
+        const data = JSON.parse(savedSession);
+        const age = Date.now() - (data?.savedAt || 0);
+
+        if (age > 7200000 || !data?.problem?.contestId || !data?.problem?.index) {
+          localStorage.removeItem("codeclash_practice_session");
+        } else {
+          setProblem(data.problem);
+          setElapsed((data.elapsed || 0) + Math.floor(age / 1000));
+          setRating(data.rating || 1200);
+          setSelectedTags(data.selectedTags || ["dp"]);
+          setDuration(data.duration || 30);
+          setPhase("practicing");
+
+          // Re-fetch statement HTML safely
+          setLoadingProblem(true);
+          fetchCFStatementClientSide(data.problem.contestId, data.problem.index)
+            .then((html) => {
+              if (html) setStatementHtml(html);
+            })
+            .finally(() => setLoadingProblem(false));
+
+          timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+        }
+      }
+    } catch (_) {
+      localStorage.removeItem("codeclash_practice_session");
+    }
+
+    return () => clearInterval(timerRef.current);
+  }, []);
+
+
+
+  // 2. Save active practice session metadata to localStorage on tick (lightweight only!)
+  useEffect(() => {
+    if (phase === "practicing" && problem) {
+      try {
+        localStorage.setItem(
+          "codeclash_practice_session",
+          JSON.stringify({
+            problem,
+            elapsed,
+            rating,
+            selectedTags,
+            duration,
+            savedAt: Date.now(),
+          })
+        );
+      } catch (_) {}
+    }
+  }, [phase, problem, elapsed, rating, selectedTags, duration]);
+
 
   const toggleTag = (tag) => {
     if (selectedTags.includes(tag)) {
@@ -227,7 +306,22 @@ export default function Practice() {
     setProblem(pickedProblem);
 
     // Start timer
+    clearInterval(timerRef.current);
     timerRef.current = setInterval(() => setElapsed((e) => e + 1), 1000);
+
+    // Save initial session
+    localStorage.setItem(
+      "codeclash_practice_session",
+      JSON.stringify({
+        problem: pickedProblem,
+        elapsed: 0,
+        rating,
+        selectedTags,
+        duration,
+        savedAt: Date.now(),
+      })
+    );
+
 
     // Fetch problem statement HTML & clean TeX
     fetchCFStatementClientSide(pickedProblem.contestId, pickedProblem.index)
@@ -238,39 +332,116 @@ export default function Practice() {
   };
 
   const handleCheckSubmission = async () => {
+    if (checking) return;
     setChecking(true);
-    playSoftBlip(700, 0.05);
-    const toastId = toast.loading("Checking Codeforces API for your submission...");
+    setCheckError(null);
+    playAction();
+
 
     try {
-      // Check user's recent submissions on Codeforces API
-      const handle = problem?.handle || "tourist"; // Or prompt user handle
-      const res = await fetch(`https://codeforces.com/api/user.status?handle=${handle}&from=1&count=10`);
-      const data = await res.json();
-
-      setChecking(false);
-
-      if (data && data.status === "OK" && data.result) {
-        const sub = data.result.find(
-          (s) => s.problem?.contestId === problem.contestId && s.problem?.index === problem.index
-        );
-
-        if (sub && sub.verdict === "OK") {
-          playVictory();
-          toast.success("VERDICT: ACCEPTED! Solo Practice Task Cleared 🎉", { id: toastId });
-          setPhase("completed");
-          clearInterval(timerRef.current);
-          return;
-        }
+      let userHandle = user?.cf_handle || "";
+      if (!userHandle) {
+        userHandle = prompt("Enter your Codeforces Handle to check submission:") || "";
       }
-    } catch (_) {
-      /* API rate limited */
-    }
 
-    setChecking(false);
-    playSadness();
-    toast.error("No Accepted (AC) submission found on Codeforces yet! Submit on Codeforces or test locally.", { id: toastId });
+      if (!userHandle || !userHandle.trim()) {
+        const errStr = "Oops! Couldn't check submission. Please enter your Codeforces handle in Settings!";
+        setCheckError(errStr);
+        toast.error(errStr);
+        return;
+      }
+
+      userHandle = userHandle.trim();
+      let secondsLeft = 12;
+      const toastId = toast.loading(`Searching Codeforces API for @${userHandle}... (${secondsLeft}s)`);
+
+      const countdownTimer = setInterval(() => {
+        secondsLeft = Math.max(0, secondsLeft - 3);
+        if (secondsLeft > 0) {
+          toast.loading(`Searching Codeforces API for @${userHandle}... (${secondsLeft}s)`, { id: toastId });
+        } else {
+          toast.loading(`Finalizing search for @${userHandle}...`, { id: toastId });
+        }
+      }, 3000);
+
+      let foundAccepted = false;
+
+      try {
+        for (let attempt = 0; attempt < 4; attempt++) {
+          try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 4000);
+
+            const url = `https://codeforces.com/api/user.status?handle=${encodeURIComponent(userHandle)}&from=1&count=10`;
+            let res = await fetch(url, { signal: controller.signal }).catch(() => null);
+            clearTimeout(timeoutId);
+
+            if (!res || !res.ok) {
+              const controller2 = new AbortController();
+              const timeoutId2 = setTimeout(() => controller2.abort(), 4000);
+              res = await fetch(`https://corsproxy.io/?${encodeURIComponent(url)}`, { signal: controller2.signal }).catch(() => null);
+              clearTimeout(timeoutId2);
+            }
+
+            if (res && res.ok) {
+              const data = await res.json();
+              if (data && data.status === "OK" && Array.isArray(data.result)) {
+                const sub = data.result.find(
+                  (s) =>
+                    String(s.problem?.contestId) === String(problem?.contestId) &&
+                    String(s.problem?.index).toUpperCase() === String(problem?.index).toUpperCase()
+                );
+
+                if (sub && sub.verdict === "OK") {
+                  foundAccepted = true;
+                  break;
+                }
+              }
+            }
+          } catch (_) {
+            /* retry next attempt */
+          }
+          if (attempt < 3) {
+            await new Promise((resolve) => setTimeout(resolve, 2500));
+          }
+        }
+      } finally {
+        clearInterval(countdownTimer);
+        toast.dismiss(toastId);
+      }
+
+      if (foundAccepted) {
+        setCheckError(null);
+        playVictory();
+        toast.success("VERDICT: ACCEPTED! Solo Practice Task Cleared 🎉");
+        setPhase("completed");
+        clearInterval(timerRef.current);
+        localStorage.removeItem("codeclash_practice_session");
+      } else {
+        playSadness();
+        const msg = `Oops! Couldn't find an Accepted (AC) submission on Codeforces for @${userHandle} on task ${problem?.contestId}${problem?.index}. Please check your handle & submission!`;
+        setCheckError(msg);
+        toast.error(msg, { duration: 7000 });
+      }
+    } catch (e) {
+      const err = "Error checking submission: " + (e.message || "Unknown error");
+      setCheckError(err);
+      toast.error(err);
+    } finally {
+      setChecking(false);
+    }
   };
+
+
+  const endPractice = () => {
+    clearInterval(timerRef.current);
+    localStorage.removeItem("codeclash_practice_session");
+    playSadness();
+    setPhase("setup");
+  };
+
+
+
 
 
 
@@ -471,16 +642,24 @@ export default function Practice() {
                     >
                       {checking ? "CHECKING SUBMISSION..." : "✓ CHECK SUBMISSION"}
                     </button>
+
+                    {checkError && (
+                      <div className="p-3.5 rounded-xl bg-status-error/15 border border-status-error/60 text-status-error font-mono text-[11px] space-y-1 shadow-lg animate-pulse">
+                        <p className="font-extrabold flex items-center gap-1.5 text-xs">
+                          <span>⚠️</span> SUBMISSION NOT DETECTED
+                        </p>
+                        <p className="leading-relaxed opacity-95">{checkError}</p>
+                      </div>
+                    )}
+
                     <button
-                      onClick={() => {
-                        clearInterval(timerRef.current);
-                        playSadness();
-                        setPhase("setup");
-                      }}
-                      className="w-full font-mono text-[10px] text-status-error hover:underline cursor-pointer text-center"
+                      onClick={endPractice}
+                      className="w-full font-mono text-[10px] text-status-error hover:underline cursor-pointer text-center pt-1"
                     >
                       🏳 End Session
                     </button>
+
+
                   </div>
                 </div>
               </div>
