@@ -22,32 +22,38 @@ async def get_me(
     conn: asyncpg.Connection = Depends(get_db),
 ):
     """Get the currently authenticated user's profile."""
-    uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
-    user = await conn.fetchrow(
-        """SELECT id, email, cf_handle, cf_verified, elo, races_played,
-                  races_won, avatar, display_name
-           FROM users WHERE id = $1""",
-        uid,
-    )
-    if not user:
-        raise HTTPException(404, "User not found")
+    try:
+        uid = uuid.UUID(user_id) if isinstance(user_id, str) else user_id
+        user = await conn.fetchrow(
+            """SELECT id, email, cf_handle, cf_verified, elo, races_played,
+                      races_won, avatar, display_name
+               FROM users WHERE id = $1""",
+            uid,
+        )
+        if not user:
+            raise HTTPException(404, "User not found")
 
-    cf_handle = user["cf_handle"]
-    cf_verified = bool(user["cf_verified"]) if user["cf_verified"] is not None else False
-    if cf_handle and len(cf_handle.strip()) > 0:
-        cf_verified = True
+        cf_handle = user["cf_handle"] if "cf_handle" in user else None
+        cf_verified = bool(user["cf_verified"]) if "cf_verified" in user and user["cf_verified"] is not None else False
+        if cf_handle and len(str(cf_handle).strip()) > 0:
+            cf_verified = True
 
-    return {
-        "id": str(user["id"]),
-        "email": user["email"],
-        "cf_handle": cf_handle,
-        "cf_verified": cf_verified,
-        "elo": user["elo"] if user["elo"] is not None else 1200,
-        "races_played": user["races_played"] if user["races_played"] is not None else 0,
-        "races_won": user["races_won"] if user["races_won"] is not None else 0,
-        "avatar": user["avatar"] or "avatar1",
-        "display_name": user["display_name"],
-    }
+        return {
+            "id": str(user["id"]),
+            "email": user["email"],
+            "cf_handle": cf_handle,
+            "cf_verified": cf_verified,
+            "elo": user["elo"] if "elo" in user and user["elo"] is not None else 1200,
+            "races_played": user["races_played"] if "races_played" in user and user["races_played"] is not None else 0,
+            "races_won": user["races_won"] if "races_won" in user and user["races_won"] is not None else 0,
+            "avatar": user["avatar"] if "avatar" in user and user["avatar"] else "avatar1",
+            "display_name": (user["display_name"] if "display_name" in user and user["display_name"] else user["email"].split("@")[0]),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("Error fetching user profile in /me")
+        raise HTTPException(500, f"Profile error: {str(e)}")
 
 
 

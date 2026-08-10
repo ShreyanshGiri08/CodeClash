@@ -1,4 +1,6 @@
 import httpx
+import urllib.parse
+
 
 CF_API_BASE = "https://codeforces.com/api"
 
@@ -38,14 +40,16 @@ async def get_problem_statement(contest_id: int, index: str) -> dict:
     if cache_key in _problem_cache:
         return _problem_cache[cache_key]
 
-    cf_url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}"
+    cf_url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}?locale=en"
+    encoded_url = urllib.parse.quote(cf_url, safe="")
     urls_to_try = [
-        f"https://m.codeforces.com/problemset/problem/{contest_id}/{index}",
-        f"https://m.codeforces.com/contest/{contest_id}/problem/{index}",
+        f"https://api.allorigins.win/get?url={encoded_url}",
+        f"https://m.codeforces.com/problemset/problem/{contest_id}/{index}?locale=en",
+        f"https://m.codeforces.com/contest/{contest_id}/problem/{index}?locale=en",
         f"https://r.jina.ai/{cf_url}",
-        f"https://api.allorigins.win/raw?url={cf_url}",
         cf_url,
     ]
+
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",

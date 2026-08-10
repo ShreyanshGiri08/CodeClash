@@ -98,9 +98,16 @@ async def init_schema():
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
 
-            -- Ensure columns exist if table was created previously
+            -- Ensure all columns exist if table was created previously on Neon
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS cf_handle VARCHAR(100);
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS cf_verified BOOLEAN DEFAULT FALSE;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS verify_code VARCHAR(20);
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS elo INTEGER DEFAULT 1200;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS races_played INTEGER DEFAULT 0;
+            ALTER TABLE users ADD COLUMN IF NOT EXISTS races_won INTEGER DEFAULT 0;
             ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar VARCHAR(50) DEFAULT 'avatar1';
             ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name VARCHAR(100);
+
 
             CREATE TABLE IF NOT EXISTS races (
                 id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

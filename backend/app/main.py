@@ -104,7 +104,22 @@ def create_app() -> FastAPI:
         return {"status": "healthy", "service": "CodeClash API Server"}
 
 
+    # ── Global Exception Handler (Guarantees CORS headers even on 500 server errors) ──
+    @app.exception_handler(Exception)
+    async def global_exception_handler(request: Request, exc: Exception):
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {str(exc)}"},
+            headers={
+                "Access-Control-Allow-Origin": "*",
+                "Access-Control-Allow-Credentials": "true",
+                "Access-Control-Allow-Headers": "*",
+                "Access-Control-Allow-Methods": "*",
+            },
+        )
+
     return app
+
 
 
 # Create the app instance — uvicorn will import this
