@@ -21,7 +21,8 @@ class Settings(BaseSettings):
     JWT_EXPIRY_DAYS: int = 7
 
     # ── CORS ──────────────────────────────────────────────────
-    CORS_ORIGINS: str = "http://localhost:5173"
+    CORS_ORIGINS: str = "*"
+
 
     # ── Caching ───────────────────────────────────────────────
     # Problem statement cache TTL in seconds (1 hour default).
