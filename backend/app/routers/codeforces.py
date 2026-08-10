@@ -110,5 +110,19 @@ async def confirm_verification(
     return {"status": "verified", "handle": row["cf_handle"]}
 
 
+@router.get("/problem-statement/{contest_id}/{index}")
+async def get_statement_endpoint(contest_id: int, index: str):
+    """
+    Scrape and return full problem statement HTML via server-side scraper.
+    Bypasses client-side CORS and Mixed Content restrictions.
+    """
+    from app.services.cf_service import get_problem_statement
+    data = await get_problem_statement(contest_id, index)
+    if not data or not data.get("html"):
+        raise HTTPException(404, f"Problem statement HTML unavailable for {contest_id}{index}")
+    return data
+
+
+
 
 

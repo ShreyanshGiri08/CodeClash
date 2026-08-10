@@ -172,9 +172,18 @@ function cleanLaTeX(html) {
 
 
 async function fetchCFStatementClientSide(contestId, index) {
+  // 1. Try our backend statement scraper first (fastest & zero CORS restrictions)
+  try {
+    const backendData = await apiCall(`/cf/problem-statement/${contestId}/${index}`).catch(() => null);
+    if (backendData && backendData.html) {
+      return cleanLaTeX(backendData.html);
+    }
+  } catch (_) {}
 
+  // 2. Fallback to client-side CORS proxies
   const cfUrl = `https://codeforces.com/contest/${contestId}/problem/${index}`;
   const encoded = encodeURIComponent(cfUrl);
+
   const proxies = [
     `https://corsproxy.io/?${cfUrl}`,
     `https://api.allorigins.win/get?url=${encoded}`,
