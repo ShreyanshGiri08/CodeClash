@@ -36,22 +36,27 @@ class SoundEngine {
     return this.muted;
   }
 
-  toggleMute() {
-    this.muted = !this.muted;
+  setMuted(isMuted) {
+    this.muted = Boolean(isMuted);
     if (typeof localStorage !== "undefined") {
       localStorage.setItem("codeclash_sound_muted", String(this.muted));
     }
     if (this.muted && this.ctx) {
       try {
-        this.masterGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
+        if (this.masterGain) this.masterGain.gain.setValueAtTime(0.0, this.ctx.currentTime);
         this.ctx.suspend();
       } catch (_) {}
     } else if (!this.muted) {
       this.initCtx();
-      this.playSoftBlip(880, 0.1);
+      this.playSoftBlip(880, 0.05);
     }
     return this.muted;
   }
+
+  toggleMute() {
+    return this.setMuted(!this.muted);
+  }
+
 
   // Soft micro UI click (Only called explicitly)
   playClick() {

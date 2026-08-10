@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useRef, useEffect, useCallback } from "react";
+import { soundEngine } from "../utils/soundEngine";
 
 const SoundContext = createContext();
 
@@ -13,12 +14,30 @@ export function SoundProvider({ children }) {
   const ctxRef = useRef(null);
   const activeSourcesRef = useRef([]);
 
-  // Sync mute state to localStorage
+  // Sync mute state to localStorage & soundEngine + Unlock Web Audio API on click
   useEffect(() => {
     if (typeof window !== "undefined" && window.localStorage) {
       localStorage.setItem("codeclash_sound_muted", String(muted));
     }
+    soundEngine.setMuted(muted);
+
+    const unlockAudio = () => {
+      if (!muted) {
+        soundEngine.initCtx();
+        if (ctxRef.current && ctxRef.current.state === "suspended") {
+          ctxRef.current.resume().catch(() => null);
+        }
+      }
+    };
+
+    window.addEventListener("pointerdown", unlockAudio);
+    window.addEventListener("keydown", unlockAudio);
+    return () => {
+      window.removeEventListener("pointerdown", unlockAudio);
+      window.removeEventListener("keydown", unlockAudio);
+    };
   }, [muted]);
+
 
   // Instantly stop all active sound nodes & suspend context when muted
   const stopAllAudio = useCallback(() => {
