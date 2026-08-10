@@ -142,13 +142,13 @@ async def get_problem_statement(contest_id: int, index: str) -> dict:
     encoded_ps_url = urllib.parse.quote(problemset_url, safe="")
 
     urls_to_try = [
-        f"https://api.codetabs.com/v1/proxy?quest={encoded_cf_url}",
-        f"https://api.codetabs.com/v1/proxy?quest={encoded_ps_url}",
-        f"https://api.allorigins.win/get?url={encoded_cf_url}",
-        f"https://api.allorigins.win/get?url={encoded_ps_url}",
-        f"https://m.codeforces.com/contest/{contest_id}/problem/{index}",
         cf_url,
+        problemset_url,
+        f"https://m.codeforces.com/contest/{contest_id}/problem/{index}",
+        f"https://api.allorigins.win/get?url={encoded_cf_url}",
+        f"https://api.codetabs.com/v1/proxy?quest={encoded_cf_url}",
     ]
+
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",

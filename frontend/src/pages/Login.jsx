@@ -38,10 +38,16 @@ export default function Login() {
       }
 
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "";
+      if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
+        setError("Account not found. Please click Sign up below to create a new account!");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
+
 
 
 
