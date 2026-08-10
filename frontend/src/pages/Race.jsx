@@ -185,7 +185,9 @@ async function fetchCFStatementClientSide(contestId, index) {
   const encoded = encodeURIComponent(cfUrl);
 
   const proxies = [
-    `https://corsproxy.io/?${cfUrl}`,
+    `https://m.codeforces.com/problemset/problem/${contestId}/${index}`,
+    `https://m.codeforces.com/contest/${contestId}/problem/${index}`,
+    `https://r.jina.ai/${cfUrl}`,
     `https://api.allorigins.win/get?url=${encoded}`,
     `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
   ];
