@@ -652,10 +652,11 @@ export default function Practice() {
                           </a>
                         </div>
                         <iframe
-                          src={`https://codeforces.com/problemset/problem/${problem?.contestId}/${problem?.index}?locale=en`}
+                          src={`https://codeforces.com/contest/${problem?.contestId}/problem/${problem?.index}?locale=en`}
                           className="w-full h-[750px] bg-[#1a1a24] rounded-b-xl border-none"
                           title="Codeforces Problem Statement"
                         />
+
                       </div>
                     )}
 
