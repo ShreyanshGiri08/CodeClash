@@ -634,7 +634,7 @@ export default function Race() {
                   )}
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar min-h-[480px] max-h-[680px]">
+                <div className="flex-1 overflow-y-auto p-5 sm:p-6 custom-scrollbar min-h-[750px] max-h-[900px]">
                   {problem ? (
                     (problem.is_valid || clientHtml) ? (
                       <motion.div
@@ -660,7 +660,7 @@ export default function Race() {
                         <p className="text-text-dim text-xs">Connecting to Codeforces via proxy...</p>
                       </div>
                     ) : (
-                      <div className="w-full min-h-[520px] flex flex-col rounded-xl overflow-hidden border border-accent/40 shadow-2xl bg-black/60">
+                      <div className="w-full min-h-[750px] flex flex-col rounded-xl overflow-hidden border border-accent/40 shadow-2xl bg-black/60">
                         <div className="bg-black/90 px-4 py-2.5 flex items-center justify-between border-b border-accent/30">
                           <span className="font-mono text-xs text-accent font-bold flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
@@ -676,12 +676,13 @@ export default function Race() {
                           </a>
                         </div>
                         <iframe
-                          src={`https://m.codeforces.com/problemset/problem/${cfContestId}/${cfIndex}?locale=en`}
-                          className="w-full h-[500px] bg-[#1a1a24] rounded-b-xl border-none"
+                          src={`https://codeforces.com/problemset/problem/${cfContestId}/${cfIndex}?locale=en`}
+                          className="w-full h-[750px] bg-[#1a1a24] rounded-b-xl border-none"
                           title="Codeforces Problem Statement"
                         />
                       </div>
                     )
+
 
                   ) : (
                     <div className="py-8 space-y-6 text-center">

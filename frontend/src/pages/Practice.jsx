@@ -624,7 +624,7 @@ export default function Practice() {
                     )}
                   </div>
 
-                  <div className="flex-1 overflow-y-auto min-h-[620px] max-h-[750px] custom-scrollbar">
+                  <div className="flex-1 overflow-y-auto min-h-[750px] max-h-[900px] custom-scrollbar">
                     {loadingProblem ? (
                       <div className="py-20 text-center space-y-4">
                         <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
@@ -636,7 +636,7 @@ export default function Practice() {
                         dangerouslySetInnerHTML={{ __html: cleanLaTeX(statementHtml) }}
                       />
                     ) : (
-                      <div className="w-full min-h-[550px] flex flex-col rounded-xl overflow-hidden border border-accent/40 shadow-2xl bg-black/60">
+                      <div className="w-full min-h-[750px] flex flex-col rounded-xl overflow-hidden border border-accent/40 shadow-2xl bg-black/60">
                         <div className="bg-black/90 px-4 py-2.5 flex items-center justify-between border-b border-accent/30">
                           <span className="font-mono text-xs text-accent font-bold flex items-center gap-2">
                             <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
@@ -652,12 +652,13 @@ export default function Practice() {
                           </a>
                         </div>
                         <iframe
-                          src={`https://m.codeforces.com/problemset/problem/${problem?.contestId}/${problem?.index}?locale=en`}
-                          className="w-full h-[540px] bg-[#1a1a24] rounded-b-xl border-none"
+                          src={`https://codeforces.com/problemset/problem/${problem?.contestId}/${problem?.index}?locale=en`}
+                          className="w-full h-[750px] bg-[#1a1a24] rounded-b-xl border-none"
                           title="Codeforces Problem Statement"
                         />
                       </div>
                     )}
+
 
                   </div>
                 </div>
