@@ -267,8 +267,10 @@ export default function Race() {
 
     // WebSocket real-time connection setup
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const backendHost = "localhost:8000";
-    const wsUrl = `${wsProtocol}//${backendHost}/races/ws/${raceId}`;
+    const rawWsUrl = import.meta.env.VITE_WS_URL || "wss://codeclash-hmgz.onrender.com";
+    const hostOnly = rawWsUrl.replace(/^wss?:\/\//, "").replace(/\/+$/, "");
+    const wsUrl = `${wsProtocol}//${hostOnly}/races/ws/${raceId}`;
+
 
     try {
       const ws = new WebSocket(wsUrl);
