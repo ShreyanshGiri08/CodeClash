@@ -74,20 +74,35 @@ def create_app() -> FastAPI:
     # ── Request Logging ──
     app.add_middleware(RequestLoggingMiddleware)
 
-    # ── Register Routers ──
+    # ── Register Routers (Dual registration for / and /api prefix resilience) ──
     app.include_router(auth.router)
+    app.include_router(auth.router, prefix="/api")
+
     app.include_router(users.router)
+    app.include_router(users.router, prefix="/api")
+
     app.include_router(codeforces.router)
+    app.include_router(codeforces.router, prefix="/api")
+
     app.include_router(races.router)
+    app.include_router(races.router, prefix="/api")
+
     app.include_router(challenges.router)
+    app.include_router(challenges.router, prefix="/api")
+
     app.include_router(leaderboard.router)
+    app.include_router(leaderboard.router, prefix="/api")
+
     app.include_router(health.router)
+    app.include_router(health.router, prefix="/api")
 
     # ── Root & Health Check Endpoints for Uptime Monitors ──
     @app.get("/")
+    @app.get("/health")
     @app.get("/api/health")
     async def root_health():
         return {"status": "healthy", "service": "CodeClash API Server"}
+
 
     return app
 

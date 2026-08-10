@@ -39,10 +39,16 @@ export default function Signup() {
       authLogin(data.token, user);
       navigate("/link-cf");
     } catch (err) {
-      setError(err.message);
+      const msg = err.message || "";
+      if (msg.includes("404") || msg.toLowerCase().includes("not found")) {
+        setError("Unable to reach server endpoint. Retrying connection...");
+      } else {
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
+
 
 
 
