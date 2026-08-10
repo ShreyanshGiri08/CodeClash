@@ -31,15 +31,20 @@ export default function Navbar() {
 
 
 
+  const handleLogoClick = () => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
   // Minimal navbar for active race room
   if (location.pathname.startsWith("/race/") && location.pathname !== "/race/find" && !location.pathname.endsWith("/summary")) {
     return (
       <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-xl border-b border-border/80">
         <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
-          <Link to="/dashboard" className="font-mono font-black text-base tracking-wider text-text-primary hover:text-accent transition-colors">
+          <Link to="/" onClick={handleLogoClick} className="font-mono font-black text-base tracking-wider text-text-primary hover:text-accent transition-colors">
             CODECLASH <span className="text-accent text-xs">⚡ RACE</span>
           </Link>
           <div className="flex items-center gap-3">
+
             {/* Sound SFX Toggle */}
             <button
               onClick={toggleMute}
@@ -74,12 +79,13 @@ export default function Navbar() {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-bg-primary/95 backdrop-blur-xl border-b border-border/80 shadow-lg">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         {/* Left: Brand Logo */}
-        <Link to="/" className="group flex items-center gap-2 cursor-pointer">
+        <Link to="/" onClick={handleLogoClick} className="group flex items-center gap-2 cursor-pointer">
           <span className="font-mono font-black text-lg tracking-wider text-text-primary group-hover:text-accent transition-colors">
             CODECLASH
           </span>
           <span className="w-2.5 h-2.5 bg-accent rounded-full animate-pulse shadow-[0_0_10px_#ffe60c]" />
         </Link>
+
 
         {/* Center: Desktop Navigation Links (Large, Bold, Clear) */}
         <div className="hidden md:flex items-center gap-6 font-mono text-sm font-black">

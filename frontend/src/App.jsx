@@ -82,7 +82,18 @@ function AppRoutes() {
 
 
 
+import { useEffect } from "react";
 import CommandPalette from "./components/common/CommandPalette";
+
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [pathname]);
+
+  return null;
+}
 
 export default function App() {
   return (
@@ -90,9 +101,11 @@ export default function App() {
       <SoundProvider>
         <BrowserRouter>
           <AuthProvider>
+            <ScrollToTop />
             <CommandPalette />
             <AppRoutes />
             <Toaster
+
 
 
             position="bottom-right"
