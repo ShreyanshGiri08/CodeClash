@@ -92,35 +92,62 @@ export default function CyberMonacoEditor({ initialCode = "", sampleInput = "", 
     if (onCodeChange) onCodeChange(newVal, lang);
   };
 
-  // SMART NON-DESTRUCTIVE SNIPPET INSERTION ENGINE
+  // SMART MULTI-LANGUAGE NON-DESTRUCTIVE SNIPPET INSERTION ENGINE
   const handleSmartInsertSnippet = (snipObj) => {
     const existing = code || "";
     let updatedCode = existing;
 
-    if (snipObj.id === "fastio") {
-      if (existing.includes("sync_with_stdio")) {
-        toast("Fast I/O is already in your code!", { icon: "⚡" });
-        return;
-      }
-      if (existing.includes("main()")) {
-        const fastIoLines = "    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n";
-        updatedCode = existing.replace(/main\s*\([^)]*\)\s*\{/, (m) => m + "\n" + fastIoLines);
-        toast.success("⚡ Injected Fast I/O inside main()!");
-      } else {
+    // Check duplicate insertion
+    if (existing.includes(snipObj.code.trim())) {
+      toast(`${snipObj.title} is already in your code!`, { icon: "⚠️" });
+      return;
+    }
+
+    // 1. FAST I/O TEMPLATE INSERTIONS
+    if (snipObj.id.startsWith("fastio")) {
+      if (snipObj.lang === "cpp") {
+        if (existing.includes("sync_with_stdio")) {
+          toast("C++ Fast I/O is already in your code!", { icon: "⚡" });
+          return;
+        }
+        if (existing.includes("main()")) {
+          const fastIoLines = "    ios_base::sync_with_stdio(false);\n    cin.tie(NULL);\n";
+          updatedCode = existing.replace(/main\s*\([^)]*\)\s*\{/, (m) => m + "\n" + fastIoLines);
+          toast.success("⚡ Injected C++ Fast I/O inside main()!");
+        } else {
+          updatedCode = snipObj.code;
+          toast.success("⚡ C++ Fast I/O Template Loaded!");
+        }
+      } else if (snipObj.lang === "python") {
+        if (existing.includes("sys.setrecursionlimit")) {
+          toast("Python Fast I/O is already in your code!", { icon: "⚡" });
+          return;
+        }
+        updatedCode = snipObj.code + "\n" + existing;
+        toast.success("⚡ Injected Python Fast I/O at top!");
+      } else if (snipObj.lang === "java") {
+        if (existing.includes("BufferedReader")) {
+          toast("Java Fast I/O is already in your code!", { icon: "⚡" });
+          return;
+        }
         updatedCode = snipObj.code;
-        toast.success("⚡ Fast I/O Template Loaded!");
+        toast.success("⚡ Java Fast I/O Template Loaded!");
+      } else if (snipObj.lang === "javascript") {
+        if (existing.includes("readFileSync")) {
+          toast("Node.js Fast I/O is already in your code!", { icon: "⚡" });
+          return;
+        }
+        updatedCode = snipObj.code;
+        toast.success("⚡ Node.js Fast I/O Template Loaded!");
       }
     } else {
-      const symbol = snipObj.id === "modpow" ? "modpow" : snipObj.id === "dsu" ? "struct DSU" : "struct SegTree";
-      if (existing.includes(symbol)) {
-        toast(`${snipObj.title} is already in your code!`, { icon: "⚠️" });
-        return;
-      }
-
+      // 2. ALGORITHM & DATA STRUCTURE SNIPPETS (DSU, ModPow, SegTree, Sieve, Heap)
       if (existing.includes("main()")) {
-        updatedCode = existing.replace(/int\s+main\s*\(|main\s*\(/, (m) => snipObj.code + "\n\n" + m);
+        // C++ & Java: Insert above main() function
+        updatedCode = existing.replace(/(?:int|void|public static void)\s+main\s*\(|main\s*\(/, (m) => snipObj.code + "\n\n" + m);
         toast.success(`↙ Inserted ${snipObj.title} above main()!`);
       } else {
+        // Python & JS: Prepend to top of file
         updatedCode = snipObj.code + "\n\n" + existing;
         toast.success(`↙ Inserted ${snipObj.title}!`);
       }
@@ -128,6 +155,7 @@ export default function CyberMonacoEditor({ initialCode = "", sampleInput = "", 
 
     handleCodeInput(updatedCode);
   };
+
 
 
   // SMART AUTO-INDENTATION & KEY EVENT HANDLER

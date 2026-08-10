@@ -636,20 +636,29 @@ export default function Practice() {
                         dangerouslySetInnerHTML={{ __html: cleanLaTeX(statementHtml) }}
                       />
                     ) : (
-                      <div className="p-8 text-center space-y-4 bg-bg-elevated/40 rounded-xl border border-border/60">
-                        <p className="text-text-primary text-sm font-medium">
-                          Open the problem statement directly on Codeforces to solve:
-                        </p>
-                        <a
-                          href={problem?.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-2 font-mono text-xs bg-accent text-black font-extrabold px-6 py-3 rounded-xl shadow-lg"
-                        >
-                          ↗ OPEN TASK ON CODEFORCES
-                        </a>
+                      <div className="w-full min-h-[550px] flex flex-col rounded-xl overflow-hidden border border-accent/40 shadow-2xl bg-black/60">
+                        <div className="bg-black/90 px-4 py-2.5 flex items-center justify-between border-b border-accent/30">
+                          <span className="font-mono text-xs text-accent font-bold flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                            ⚡ DIRECT CODECLASH EMBEDDED READER
+                          </span>
+                          <a
+                            href={problem?.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-[11px] bg-accent/20 hover:bg-accent hover:text-black border border-accent/40 text-accent font-bold px-2.5 py-1 rounded transition-all"
+                          >
+                            ↗ Open on Codeforces
+                          </a>
+                        </div>
+                        <iframe
+                          src={`https://m.codeforces.com/problemset/problem/${problem?.contestId}/${problem?.index}?locale=en`}
+                          className="w-full h-[540px] bg-[#1a1a24] rounded-b-xl border-none"
+                          title="Codeforces Problem Statement"
+                        />
                       </div>
                     )}
+
                   </div>
                 </div>
 

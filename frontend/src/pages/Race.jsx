@@ -660,20 +660,29 @@ export default function Race() {
                         <p className="text-text-dim text-xs">Connecting to Codeforces via proxy...</p>
                       </div>
                     ) : (
-                      <div className="py-10 space-y-5 text-center">
-                        <div className="text-4xl">⚠️</div>
-                        <p className="font-mono text-sm font-bold text-accent">{problem.title}</p>
-                        <p className="text-text-muted text-xs">Statement could not be loaded automatically.<br/>Open directly on Codeforces to view and submit:</p>
-                        <a
-                          href={problem.url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-2 font-mono text-xs bg-accent text-black font-extrabold px-6 py-3.5 rounded-lg hover:opacity-90 transition-opacity shadow-lg"
-                        >
-                          ↗ OPEN {cfContestId}{cfIndex} ON CODEFORCES
-                        </a>
+                      <div className="w-full min-h-[520px] flex flex-col rounded-xl overflow-hidden border border-accent/40 shadow-2xl bg-black/60">
+                        <div className="bg-black/90 px-4 py-2.5 flex items-center justify-between border-b border-accent/30">
+                          <span className="font-mono text-xs text-accent font-bold flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                            ⚡ DIRECT CODECLASH EMBEDDED READER
+                          </span>
+                          <a
+                            href={problem.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="font-mono text-[11px] bg-accent/20 hover:bg-accent hover:text-black border border-accent/40 text-accent font-bold px-2.5 py-1 rounded transition-all"
+                          >
+                            ↗ Open on Codeforces
+                          </a>
+                        </div>
+                        <iframe
+                          src={`https://m.codeforces.com/problemset/problem/${cfContestId}/${cfIndex}?locale=en`}
+                          className="w-full h-[500px] bg-[#1a1a24] rounded-b-xl border-none"
+                          title="Codeforces Problem Statement"
+                        />
                       </div>
                     )
+
                   ) : (
                     <div className="py-8 space-y-6 text-center">
                       <div className="w-10 h-10 border-3 border-accent border-t-transparent rounded-full animate-spin mx-auto" />
