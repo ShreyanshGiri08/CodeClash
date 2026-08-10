@@ -83,8 +83,15 @@ def create_app() -> FastAPI:
     app.include_router(leaderboard.router)
     app.include_router(health.router)
 
+    # ── Root & Health Check Endpoints for Uptime Monitors ──
+    @app.get("/")
+    @app.get("/api/health")
+    async def root_health():
+        return {"status": "healthy", "service": "CodeClash API Server"}
+
     return app
 
 
 # Create the app instance — uvicorn will import this
 app = create_app()
+
