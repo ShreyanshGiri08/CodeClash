@@ -135,10 +135,10 @@ async function fetchCFStatementClientSide(contestId, index) {
   const proxyUrls = [
     `https://api.allorigins.win/get?url=${encodeURIComponent(desktopUrl)}`,
     `https://api.allorigins.win/get?url=${encodeURIComponent(mobileUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(desktopUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(mobileUrl)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(desktopUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(mobileUrl)}`,
   ];
+
 
   for (const pUrl of proxyUrls) {
     try {
