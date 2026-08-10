@@ -178,7 +178,7 @@ async function fetchCFStatementClientSide(contestId, index) {
     if (backendData && backendData.html) {
       return cleanLaTeX(backendData.html);
     }
-  } catch (_) {}
+  } catch (_) { }
 
   // 2. Client-side CORS proxies fetching mobile & desktop Codeforces HTML in English
   const desktopUrl = `https://codeforces.com/contest/${contestId}/problem/${index}?locale=en`;
@@ -207,7 +207,7 @@ async function fetchCFStatementClientSide(contestId, index) {
         try {
           const parsed = JSON.parse(html);
           if (parsed && parsed.contents) html = parsed.contents;
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (!html || html.length < 100) continue;
@@ -223,15 +223,21 @@ async function fetchCFStatementClientSide(contestId, index) {
 
       if (stDiv) {
         stDiv.querySelectorAll("img").forEach((img) => {
-          if (img.src && !img.src.startsWith("http")) {
-            img.src = "https://codeforces.com" + img.getAttribute("src");
+          const rawSrc = img.getAttribute("src") || "";
+          if (rawSrc && !rawSrc.startsWith("http")) {
+            if (rawSrc.startsWith("/")) {
+              img.src = "https://codeforces.com" + rawSrc;
+            } else {
+              img.src = "https://codeforces.com/" + rawSrc;
+            }
           }
         });
+
         const hdr = stDiv.querySelector(".header");
         if (hdr) hdr.remove();
         return cleanLaTeX(stDiv.innerHTML);
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
 
@@ -285,7 +291,7 @@ export default function Race() {
     });
     getProblem(raceId).then((p) => {
       if (p) setProblem(p);
-    }).catch(() => {});
+    }).catch(() => { });
 
     // WebSocket real-time connection setup
     const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
@@ -326,7 +332,7 @@ export default function Race() {
               setTimeout(() => setOpponentChecking(false), 4000);
             }
           }
-        } catch (e) {}
+        } catch (e) { }
       };
 
       ws.onclose = () => {
@@ -839,18 +845,17 @@ export default function Race() {
                       <span className="text-lg">🏆</span>
                     </div>
                     <div className="p-6 text-center">
-                      <span className={`inline-block font-mono text-base font-black px-6 py-2 rounded-xl mb-4 shadow-lg ${
-                        race.winner_id === user?.id
+                      <span className={`inline-block font-mono text-base font-black px-6 py-2 rounded-xl mb-4 shadow-lg ${race.winner_id === user?.id
                           ? "bg-status-live text-black font-extrabold shadow-status-live/30"
                           : race.winner_id
-                          ? "bg-status-error text-white font-extrabold shadow-status-error/30"
-                          : "bg-status-warning text-black font-extrabold shadow-status-warning/30"
-                      }`}>
+                            ? "bg-status-error text-white font-extrabold shadow-status-error/30"
+                            : "bg-status-warning text-black font-extrabold shadow-status-warning/30"
+                        }`}>
                         {race.winner_id === user?.id
                           ? "🎉 VICTORY!"
                           : race.winner_id
-                          ? "💀 DEFEAT"
-                          : "⏱ TIME EXPIRED — DRAW"}
+                            ? "💀 DEFEAT"
+                            : "⏱ TIME EXPIRED — DRAW"}
                       </span>
 
                       {!race.winner_id && (
@@ -862,10 +867,9 @@ export default function Race() {
                       <div className="flex items-center justify-center gap-10 mt-5 p-4 rounded-xl bg-bg-elevated/70 border border-border/60">
                         <div className="text-center">
                           <p className="text-sm font-extrabold text-text-primary">{isP1 ? race.player1_handle : race.player2_handle}</p>
-                          <p className={`font-mono text-xl font-extrabold ${
-                            (isP1 ? (race.p1_elo_after - race.p1_elo_before) : (race.p2_elo_after - race.p2_elo_before)) > 0
+                          <p className={`font-mono text-xl font-extrabold ${(isP1 ? (race.p1_elo_after - race.p1_elo_before) : (race.p2_elo_after - race.p2_elo_before)) > 0
                               ? "text-status-live" : (race.p1_elo_after === race.p1_elo_before ? "text-text-muted" : "text-status-error")
-                          }`}>
+                            }`}>
                             {isP1
                               ? (race.p1_elo_after && race.p1_elo_before ? `${race.p1_elo_after - race.p1_elo_before > 0 ? "+" : ""}${race.p1_elo_after - race.p1_elo_before}` : "+0")
                               : (race.p2_elo_after && race.p2_elo_before ? `${race.p2_elo_after - race.p2_elo_before > 0 ? "+" : ""}${race.p2_elo_after - race.p2_elo_before}` : "+0")
@@ -874,10 +878,9 @@ export default function Race() {
                         </div>
                         <div className="text-center">
                           <p className="text-sm font-extrabold text-text-primary">{isP1 ? race.player2_handle : race.player1_handle}</p>
-                          <p className={`font-mono text-xl font-extrabold ${
-                            (isP1 ? (race.p2_elo_after - race.p1_elo_before) : (race.p1_elo_after - race.p1_elo_before)) > 0
+                          <p className={`font-mono text-xl font-extrabold ${(isP1 ? (race.p2_elo_after - race.p1_elo_before) : (race.p1_elo_after - race.p1_elo_before)) > 0
                               ? "text-status-live" : (race.p1_elo_after === race.p1_elo_before ? "text-text-muted" : "text-status-error")
-                          }`}>
+                            }`}>
                             {isP1
                               ? (race.p2_elo_after && race.p2_elo_before ? `${race.p2_elo_after - race.p2_elo_before > 0 ? "+" : ""}${race.p2_elo_after - race.p2_elo_before}` : "+0")
                               : (race.p1_elo_after && race.p1_elo_before ? `${race.p1_elo_after - race.p1_elo_before > 0 ? "+" : ""}${race.p1_elo_after - race.p1_elo_before}` : "+0")

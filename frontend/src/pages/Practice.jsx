@@ -126,7 +126,7 @@ async function fetchCFStatementClientSide(contestId, index) {
     if (backendData && backendData.html) {
       return backendData.html;
     }
-  } catch (_) {}
+  } catch (_) { }
 
   // 2. Client-side CORS proxies fetching mobile & desktop Codeforces HTML in English
   const desktopUrl = `https://codeforces.com/problemset/problem/${contestId}/${index}?locale=en`;
@@ -155,7 +155,7 @@ async function fetchCFStatementClientSide(contestId, index) {
         try {
           const parsed = JSON.parse(html);
           if (parsed && parsed.contents) html = parsed.contents;
-        } catch (_) {}
+        } catch (_) { }
       }
 
       if (!html || html.length < 100) continue;
@@ -171,15 +171,21 @@ async function fetchCFStatementClientSide(contestId, index) {
 
       if (stDiv) {
         stDiv.querySelectorAll("img").forEach((img) => {
-          if (img.src && !img.src.startsWith("http")) {
-            img.src = "https://codeforces.com" + img.getAttribute("src");
+          const rawSrc = img.getAttribute("src") || "";
+          if (rawSrc && !rawSrc.startsWith("http")) {
+            if (rawSrc.startsWith("/")) {
+              img.src = "https://codeforces.com" + rawSrc;
+            } else {
+              img.src = "https://codeforces.com/" + rawSrc;
+            }
           }
         });
+
         const hdr = stDiv.querySelector(".header");
         if (hdr) hdr.remove();
         return stDiv.innerHTML;
       }
-    } catch (_) {}
+    } catch (_) { }
   }
 
 
@@ -309,7 +315,7 @@ export default function Practice() {
             savedAt: Date.now(),
           })
         );
-      } catch (_) {}
+      } catch (_) { }
     }
   }, [phase, problem, elapsed, rating, selectedTags, duration]);
 
@@ -526,11 +532,10 @@ export default function Practice() {
                     <button
                       key={r}
                       onClick={() => setRating(r)}
-                      className={`font-mono text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all cursor-pointer ${
-                        rating === r
+                      className={`font-mono text-xs font-extrabold px-4 py-2.5 rounded-xl transition-all cursor-pointer ${rating === r
                           ? "bg-accent text-black shadow-[0_0_20px_rgba(255,230,12,0.4)] scale-105"
                           : "bg-bg-elevated border border-border text-text-muted hover:border-accent"
-                      }`}
+                        }`}
                     >
                       {r} ELO
                     </button>
@@ -548,11 +553,10 @@ export default function Practice() {
                       <button
                         key={t}
                         onClick={() => toggleTag(t)}
-                        className={`font-mono text-xs font-bold px-3.5 py-2 rounded-lg transition-all cursor-pointer ${
-                          active
+                        className={`font-mono text-xs font-bold px-3.5 py-2 rounded-lg transition-all cursor-pointer ${active
                             ? "bg-purple-600/30 border border-purple-400 text-purple-300 shadow-sm"
                             : "bg-bg-elevated/70 border border-border text-text-dim hover:text-text-muted"
-                        }`}
+                          }`}
                       >
                         #{t}
                       </button>
@@ -569,11 +573,10 @@ export default function Practice() {
                     <button
                       key={d}
                       onClick={() => setDuration(d)}
-                      className={`font-mono text-xs font-extrabold px-5 py-2.5 rounded-xl transition-all cursor-pointer ${
-                        duration === d
+                      className={`font-mono text-xs font-extrabold px-5 py-2.5 rounded-xl transition-all cursor-pointer ${duration === d
                           ? "bg-cyan-500/20 border border-cyan-400 text-cyan-300 shadow-sm"
                           : "bg-bg-elevated border border-border text-text-muted"
-                      }`}
+                        }`}
                     >
                       {d} MINS
                     </button>
@@ -746,13 +749,12 @@ export default function Practice() {
                       delay: (idx % 6) * 0.1,
                       ease: "easeOut",
                     }}
-                    className={`absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center font-bold text-xs pointer-events-none ${
-                      idx % 3 === 0
+                    className={`absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2 w-4 h-4 flex items-center justify-center font-bold text-xs pointer-events-none ${idx % 3 === 0
                         ? "text-accent"
                         : idx % 3 === 1
-                        ? "text-cyan-400"
-                        : "text-purple-400"
-                    }`}
+                          ? "text-cyan-400"
+                          : "text-purple-400"
+                      }`}
                   >
                     {idx % 4 === 0 ? "★" : idx % 4 === 1 ? "✦" : idx % 4 === 2 ? "❖" : "⚡"}
                   </motion.div>

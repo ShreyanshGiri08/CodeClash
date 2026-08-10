@@ -138,25 +138,46 @@ html.light [class*="bg-bg-primary/"] {
   background-color: rgba(30, 27, 46, 0.5) !important;
 }
 
-/* Problem statement stays readable */
+/* Light mode problem statement styling — clean dark text on light backgrounds */
 html.light .problem-statement,
 html.light .problem-statement div,
 html.light .problem-statement p,
 html.light .problem-statement span,
 html.light .problem-statement li {
-  color: #f1f5f9 !important;
+  color: #0f172a !important;
 }
 html.light .problem-statement pre {
-  background: rgba(255,255,255,0.1) !important;
-  border-color: rgba(255,255,255,0.2) !important;
-  color: #f1f5f9 !important;
+  background: #f8fafc !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
 }
 html.light .problem-statement .tex-font-style-tt,
 html.light .problem-statement code {
-  background: rgba(129,140,248,0.2) !important;
-  color: #818cf8 !important;
-  border-color: rgba(129,140,248,0.3) !important;
+  background: #e2e8f0 !important;
+  color: #4338ca !important;
+  border-color: #cbd5e1 !important;
 }
+html.light .problem-statement .sample-test .input,
+html.light .problem-statement .sample-test .output {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+html.light .problem-statement .sample-test .title {
+  color: #4338ca !important;
+}
+
+/* Ensure problem statement images are visible in both Dark & Light mode */
+.problem-statement img {
+  max-width: 100% !important;
+  height: auto !important;
+  display: inline-block !important;
+  margin: 12px 0 !important;
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  padding: 6px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
 
 /* Ensure gradients don't wash out the image */
 html.light [class*="from-black/"] { --tw-gradient-from: rgba(30,27,46,0.55) !important; }
