@@ -38,21 +38,48 @@ async def get_problem_statement(contest_id: int, index: str) -> dict:
     if cache_key in _problem_cache:
         return _problem_cache[cache_key]
 
-    url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}"
-    async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0"}) as client:
-        resp = await client.get(url)
-        soup = BeautifulSoup(resp.text, "html.parser")
+    cf_url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}"
+    urls_to_try = [
+        f"https://m.codeforces.com/problemset/problem/{contest_id}/{index}",
+        f"https://m.codeforces.com/contest/{contest_id}/problem/{index}",
+        f"https://r.jina.ai/{cf_url}",
+        f"https://api.allorigins.win/raw?url={cf_url}",
+        cf_url,
+    ]
 
-    statement_div = soup.find("div", class_="problem-statement")
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    }
+
+    statement_div = None
+    async with httpx.AsyncClient(headers=headers, timeout=10.0, follow_redirects=True) as client:
+        for target_url in urls_to_try:
+            try:
+                resp = await client.get(target_url)
+                if resp.status_code == 200 and resp.text:
+                    soup = BeautifulSoup(resp.text, "html.parser")
+                    found = (
+                        soup.find("div", class_="problem-statement") or
+                        soup.find("div", class_="problemstatement") or
+                        soup.find("div", class_="ttypography") or
+                        soup.find("div", class_="sample-tests")
+                    )
+                    if found:
+                        statement_div = found
+                        break
+            except Exception:
+                continue
+
     if not statement_div:
-        return {"title": f"{contest_id}{index}", "html": "", "url": url}
+        return {"title": f"Problem {contest_id}{index}", "html": "", "url": cf_url}
 
     title_el = statement_div.find("div", class_="title")
-    title = title_el.text.strip() if title_el else f"{contest_id}{index}"
+    title = title_el.text.strip() if title_el else f"Problem {contest_id}{index}"
 
-    result = {"title": title, "html": str(statement_div), "url": url}
-    _problem_cache[cache_key] = result  # cache — CF servers pe baar-baar load nahi karna
+    result = {"title": title, "html": str(statement_div), "url": cf_url}
+    _problem_cache[cache_key] = result
     return result
+
 
 import re
 
