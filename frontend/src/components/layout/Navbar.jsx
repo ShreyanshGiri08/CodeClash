@@ -118,9 +118,27 @@ export default function Navbar() {
             <span className="hidden sm:inline">{!muted ? "SFX ON" : "MUTED"}</span>
           </button>
 
-
+          {/* Quick Command Palette Search Trigger Button (⌘K / Ctrl+K) */}
+          <button
+            onClick={() => {
+              window.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "k", ctrlKey: true, bubbles: true })
+              );
+            }}
+            className="px-3 py-1.5 rounded-full bg-black/60 border border-accent/50 hover:border-accent text-accent hover:bg-accent/20 transition-all text-xs font-mono font-extrabold flex items-center gap-2 cursor-pointer shadow-[0_0_15px_rgba(255,230,12,0.2)] group"
+            title="Open Command Palette (Ctrl+K or ⌘K)"
+          >
+            <svg className="w-3.5 h-3.5 text-accent group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            <span className="hidden md:inline text-text-primary/90">Search...</span>
+            <span className="bg-accent/20 border border-accent/60 text-accent font-black px-1.5 py-0.5 rounded text-[10px]">
+              ⌘K
+            </span>
+          </button>
 
           {/* Theme Toggle Button */}
+
           <button
             onClick={toggleTheme}
             className="px-3 py-1.5 rounded-full bg-bg-elevated border border-border hover:border-accent text-text-primary transition-all text-xs font-mono font-extrabold flex items-center gap-1.5 cursor-pointer shadow-sm"

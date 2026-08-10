@@ -16,10 +16,14 @@ export default function Footer() {
             <p className="text-text-muted text-xs">
               Built for people who'd rather battle than grind alone.
             </p>
-            <p className="text-text-dim text-xs font-mono">
-              © 2026 CodeClash. All rights reserved.
+            <p className="text-text-dim text-xs font-mono flex items-center justify-end gap-2">
+              <span>© 2026 CodeClash.</span>
+              <span className="text-accent bg-accent/10 border border-accent/30 px-2 py-0.5 rounded text-[10px]">
+                💡 Tip: Press <kbd className="font-bold">Ctrl+K</kbd> for quick commands
+              </span>
             </p>
           </div>
+
         </div>
       </div>
     </footer>

@@ -23,27 +23,20 @@ export default function Login() {
       const data = await apiLogin(email, password);
       localStorage.setItem("token", data.token);
 
-      let user = null;
-      try {
-        user = await getMe();
-      } catch (err) {
-        user = {
-          id: data.user_id,
-          email: email,
-          cf_handle: null,
-          cf_verified: false,
-          elo: 1200,
-          avatar: "avatar1",
-        };
-      }
+      const fetchedUser = await getMe().catch(() => null);
 
-      authLogin(data.token, user);
-
-      if (user && user.cf_verified) {
-        navigate("/dashboard");
+      if (fetchedUser) {
+        authLogin(data.token, fetchedUser);
+        if (fetchedUser.cf_verified || fetchedUser.cf_handle) {
+          navigate("/dashboard");
+        } else {
+          navigate("/link-cf");
+        }
       } else {
-        navigate("/link-cf");
+        authLogin(data.token, { id: data.user_id, email });
+        navigate("/dashboard");
       }
+
     } catch (err) {
       setError(err.message);
     } finally {

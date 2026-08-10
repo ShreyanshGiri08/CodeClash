@@ -16,11 +16,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (token && !user) {
+    if (token) {
       apiCall("/me")
         .then((data) => {
-          setUser(data);
-          localStorage.setItem("user", JSON.stringify(data));
+          if (data && data.id) {
+            setUser(data);
+            localStorage.setItem("user", JSON.stringify(data));
+          }
         })
         .catch((err) => {
           console.error("Failed to refresh user profile:", err);
@@ -37,18 +39,28 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false);
     }
-  }, [token, user]);
+  }, [token]);
 
 
 
   function login(newToken, userData) {
     localStorage.setItem("token", newToken);
+    setToken(newToken);
     if (userData) {
+      setUser(userData);
       localStorage.setItem("user", JSON.stringify(userData));
     }
-    setToken(newToken);
-    setUser(userData);
+    // Fetch fresh database profile immediately
+    apiCall("/me")
+      .then((data) => {
+        if (data && data.id) {
+          setUser(data);
+          localStorage.setItem("user", JSON.stringify(data));
+        }
+      })
+      .catch(() => {});
   }
+
 
   function logout() {
     localStorage.removeItem("token");

@@ -15,6 +15,7 @@ const COLORS = ["#22c55e", "#ef4444", "#94a3b8"];
 export default function Analytics() {
   const { user } = useAuth();
   const [raceHistory, setRaceHistory] = useState([]);
+  const [topicStats, setTopicStats] = useState({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -24,28 +25,81 @@ export default function Analytics() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, []);
+
+    // Dynamic CF User Status Topic Scraper
+    if (user?.cf_handle) {
+      const url = `https://codeforces.com/api/user.status?handle=${encodeURIComponent(user.cf_handle)}&from=1&count=60`;
+      fetch(url)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data && data.status === "OK" && Array.isArray(data.result)) {
+            const counts = {};
+            const processedProblems = new Set();
+
+            data.result.forEach((sub) => {
+              if (sub.verdict === "OK" && sub.problem && Array.isArray(sub.problem.tags)) {
+                const probId = `${sub.problem.contestId}${sub.problem.index}`;
+                if (!processedProblems.has(probId)) {
+                  processedProblems.add(probId);
+                  sub.problem.tags.forEach((tag) => {
+                    const lower = tag.toLowerCase();
+                    counts[lower] = (counts[lower] || 0) + 1;
+                  });
+                }
+              }
+            });
+            setTopicStats(counts);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [user]);
 
   const totalRaces = user?.races_played || raceHistory.length || 0;
   const totalWins = user?.races_won || raceHistory.filter((r) => r.result === "win").length || 0;
   const totalLosses = Math.max(0, totalRaces - totalWins);
   const winRate = totalRaces > 0 ? Math.round((totalWins / totalRaces) * 100) : 0;
 
-  // Dynamic Skill Radar Calculations based on user Elo & race stats
-  const baseSkill = Math.min(95, Math.max(35, Math.round((user?.elo || 1200) / 20)));
-  const radarData = [
-    { topic: "Implementation", proficiency: Math.min(100, baseSkill + 15) },
-    { topic: "Math", proficiency: Math.min(100, Math.max(25, baseSkill - 10)) },
-    { topic: "Greedy", proficiency: Math.min(100, baseSkill + 8) },
-    { topic: "DP", proficiency: Math.min(100, Math.max(20, baseSkill - 15)) },
-    { topic: "Graphs", proficiency: Math.min(100, Math.max(30, baseSkill - 5)) },
-    { topic: "Strings", proficiency: Math.min(100, baseSkill + 5) },
+  // Real Dynamic Radar Proficiency Engine (base skill + CF Solved Topic Bonus + Clash Wins)
+  const baseSkill = Math.min(80, Math.max(30, Math.round((user?.elo || 1200) / 25)));
+
+  const TOPIC_MAP = [
+    { key: "implementation", name: "Implementation" },
+    { key: "math", name: "Math" },
+    { key: "greedy", name: "Greedy" },
+    { key: "dp", name: "DP" },
+    { key: "graphs", name: "Graphs" },
+    { key: "strings", name: "Strings" },
   ];
+
+  const radarData = TOPIC_MAP.map(({ key, name }) => {
+    const cfSolved = topicStats[key] || 0;
+    const raceWins = raceHistory.filter(
+      (r) => r.result === "win" && r.problem?.tags?.some((t) => t.toLowerCase().includes(key))
+    ).length;
+
+    // Real dynamic skill formula: Base ELO Rating + CF Solved Multiplier + Match Win Multiplier
+    const dynamicProficiency = Math.min(
+      100,
+      Math.max(25, baseSkill + cfSolved * 7 + raceWins * 12)
+    );
+
+    return {
+      topic: name,
+      proficiency: dynamicProficiency,
+      cfSolved,
+      raceWins,
+    };
+  });
+
+  // Determine top proficiency topic
+  const topTopic = [...radarData].sort((a, b) => b.proficiency - a.proficiency)[0]?.topic || "Implementation";
 
   const pieData = [
     { name: "Wins", value: totalWins },
     { name: "Losses", value: totalLosses },
   ];
+
 
   return (
     <PageLayout>
@@ -91,8 +145,9 @@ export default function Analytics() {
             </div>
             <div className="bg-black/90 backdrop-blur-2xl border border-accent/30 rounded-2xl p-5 shadow-xl space-y-1">
               <p className="font-mono text-[11px] text-text-dim tracking-wider">// TOP PROFICIENCY</p>
-              <p className="font-mono text-xl font-black text-cyan-400">Implementation</p>
+              <p className="font-mono text-xl font-black text-cyan-400">{topTopic}</p>
             </div>
+
           </div>
 
           {/* Charts Row */}

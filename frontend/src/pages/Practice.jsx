@@ -167,8 +167,12 @@ async function fetchCFStatementClientSide(contestId, index) {
 // Dynamically fetch REAL problem matching EXACT target rating and tags from Codeforces API
 async function fetchRealCFProblem(targetRating, selectedTags) {
   try {
-    const tagQuery = selectedTags.join(";");
-    const resp = await fetch(`https://codeforces.com/api/problemset.problems?tags=${encodeURIComponent(tagQuery)}`);
+    const tagQuery = (selectedTags && selectedTags.length > 0) ? selectedTags.join(";") : "";
+    const url = tagQuery
+      ? `https://codeforces.com/api/problemset.problems?tags=${encodeURIComponent(tagQuery)}`
+      : `https://codeforces.com/api/problemset.problems`;
+    const resp = await fetch(url);
+
     if (resp.ok) {
       const data = await resp.json();
       if (data.status === "OK" && data.result?.problems) {
@@ -218,7 +222,7 @@ export default function Practice() {
   const { playVictory, playSadness, playAction } = useSound();
 
   const [rating, setRating] = useState(1200);
-  const [selectedTags, setSelectedTags] = useState(["dp"]);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [duration, setDuration] = useState(30);
   const [phase, setPhase] = useState("setup"); // 'setup' | 'practicing' | 'completed'
   const [elapsed, setElapsed] = useState(0);
@@ -243,7 +247,7 @@ export default function Practice() {
           setProblem(data.problem);
           setElapsed((data.elapsed || 0) + Math.floor(age / 1000));
           setRating(data.rating || 1200);
-          setSelectedTags(data.selectedTags || ["dp"]);
+          setSelectedTags(data.selectedTags || []);
           setDuration(data.duration || 30);
           setPhase("practicing");
 
@@ -289,11 +293,12 @@ export default function Practice() {
 
   const toggleTag = (tag) => {
     if (selectedTags.includes(tag)) {
-      if (selectedTags.length > 1) setSelectedTags(selectedTags.filter((t) => t !== tag));
+      setSelectedTags(selectedTags.filter((t) => t !== tag));
     } else {
       setSelectedTags([...selectedTags, tag]);
     }
   };
+
 
   const startPractice = async () => {
     setLoadingProblem(true);
@@ -512,7 +517,7 @@ export default function Practice() {
 
               {/* Tag Selector */}
               <div className="space-y-3">
-                <label className="font-mono text-xs font-bold text-accent tracking-wider">// TOPIC TAGS (SELECT MULTIPLE)</label>
+                <label className="font-mono text-xs font-bold text-accent tracking-wider">// TOPIC TAGS (OPTIONAL — SELECT ANY OR NONE FOR ALL TOPICS)</label>
                 <div className="flex flex-wrap gap-2">
                   {TAGS.map((t) => {
                     const active = selectedTags.includes(t);
@@ -561,9 +566,10 @@ export default function Practice() {
                   onClick={startPractice}
                   className="w-full font-mono text-sm font-black bg-accent text-black py-4 rounded-xl shadow-[0_0_25px_rgba(255,230,12,0.5)] cursor-pointer"
                 >
-                  ⚡ START SOLO PRACTICE SESSION ({rating} ELO - #{selectedTags.join(", #")})
+                  ⚡ START SOLO PRACTICE SESSION ({rating} ELO{selectedTags.length > 0 ? ` - #${selectedTags.join(", #")}` : " - ALL TOPICS"})
                 </motion.button>
               </div>
+
             </motion.div>
           )}
 

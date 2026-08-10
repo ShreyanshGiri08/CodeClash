@@ -15,10 +15,11 @@ export default function LinkCF() {
   const { user, updateUser } = useAuth();
 
   useEffect(() => {
-    if (user && user.cf_verified) {
+    if (user && (user.cf_verified || user.cf_handle)) {
       navigate("/dashboard");
     }
   }, [user]);
+
 
   async function handleStart(e) {
     e.preventDefault();
