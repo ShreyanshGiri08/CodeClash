@@ -1,62 +1,138 @@
-# CodeClash
+# ⚡ CodeClash — Real-Time 1v1 Competitive Programming Esports Platform
 
-CodeClash is a real-time, 1v1 competitive programming esports platform that pairs developers for speed clashes on authentic Codeforces problems. Features include Elo-rated matchmaking, an embedded multi-language IDE with local compilation, real-time verdict tracking, 3D holographic badges, and a zero-asset Web Audio sound synthesizer.
+> **CodeClash** is a state-of-the-art, real-time competitive programming platform designed for speed clashes on authentic Codeforces problems. Featuring Elo-rated matchmaking, Valorant-style match entrances, an embedded multi-language IDE with local compilation, a smart non-destructive algorithm snippet vault, dynamic analytics radar charts, 3D holographic badges, and a zero-asset Web Audio synthesizer.
 
 ---
 
-## Technical Stack
+## 📑 Table of Contents
+1. [Technical Stack](#-technical-stack)
+2. [System Design & Architecture Flowcharts](#-system-design--architecture-flowcharts)
+3. [Algorithmic & Mathematical Models](#-algorithmic--mathematical-models)
+4. [Exhaustive Feature Directory](#-exhaustive-feature-directory)
+5. [Performance Optimizations & Resilience](#-performance-optimizations--resilience)
+6. [Project Directory Structure](#-project-directory-structure)
+7. [Installation & Local Setup](#-installation--local-setup)
+8. [Environment Variables](#-environment-variables)
 
-### Frontend
-- **Core**: React 18, Vite 5, React Router v6
-- **Styling & Motion**: Tailwind CSS v4, Vanilla CSS Custom Variables, Framer Motion (3D spring physics, layout animations, cyber curtain page transitions with `AnimatePresence`)
-- **Global Command Palette**: `Ctrl + K` / `Cmd + K` instant search overlay (`CommandPalette.jsx`) for 1-click global route navigation and audio toggle
-- **CP Snippet Vault**: 1-click competitive programming template insertion (`CPSnippetVault.jsx`) featuring Fast I/O, Modular Exponentiation, DSU, and Segment Trees directly inside Monaco IDE
+---
+
+## 🛠 Technical Stack
+
+### Frontend Subsystems
+- **Core Framework**: React 18, Vite 5, React Router v6
+- **Styling & Micro-Interactions**: Tailwind CSS v4, Vanilla CSS Custom Variables, Framer Motion (3D spring physics, layout animations, cyber curtain route transitions with `AnimatePresence`)
+- **Global Command Palette**: `Ctrl + K` / `⌘K` glassmorphic search overlay (`CommandPalette.jsx`) with 3D rotating SVG icons and `scrollIntoView` viewport tracking
+- **Code Studio IDE**: Custom Monaco-inspired editor (`CyberMonacoEditor.jsx`) supporting C++ 17 (g++), Python 3.10, Java 17, and JavaScript (Node 18) with smart auto-indentation and diff output comparison
+- **Smart Snippet Vault**: 1-click non-destructive algorithm snippet insertion (`CPSnippetVault.jsx`) featuring Fast I/O, Modular Exponentiation, DSU, and Segment Trees
+- **Dynamic Analytics**: Recharts engine rendering live 6-axis Radar skill distribution charts and Win/Loss pie charts
 - **Audio Synthesizer**: Custom Web Audio API synthesizer (`SoundContext.jsx`) utilizing low-latency Web Audio API Oscillators, GainNodes, and Chrome async context resolution (Zero external MP3/WAV assets)
-- **IDE Component**: Custom Code Editor (`CyberMonacoEditor.jsx`) supporting C++ 17, Python 3.10, Java 17, and JavaScript (Node.js 18) with smart auto-indentation and local compilation
-- **Notifications**: React Hot Toast
+- **Toast Notifications**: React Hot Toast
 
-
-### Backend
-- **Framework**: FastAPI (Python 3.10+) running on Uvicorn ASGI server
-- **WebSockets**: FastAPI WebSockets for real-time race events, player state broadcasting, and match clocks
-- **Data Persistence**: PostgreSQL via `asyncpg` (with SQLite fallback for local development)
-- **Authentication**: JWT tokens (`python-jose`) + Password Hashing (`bcrypt`)
+### Backend Subsystems
+- **API Framework**: FastAPI (Python 3.10+) running on Uvicorn ASGI high-performance server
+- **Real-Time WebSockets**: FastAPI WebSockets for live race events, opponent state broadcasting, and match countdown clocks
+- **Database Layer**: PostgreSQL via `asyncpg` (with SQLite fallback for local development)
+- **Security & Authentication**: JWT Tokens (`python-jose`) + Password Hashing (`bcrypt`)
 - **Scraping Engine**: `httpx` + `BeautifulSoup4` for live Codeforces problem statement scraping and CORS proxying
 
-### Code Execution APIs
-- **Primary Execution Engine**: Piston API (`https://emkc.org/api/v2/piston/execute`)
+### Execution & Verification Engine
+- **Primary Execution API**: Piston API (`https://emkc.org/api/v2/piston/execute`)
 - **Secondary Compiler Engine**: Judge0 CE API (`https://ce.judge0.com/submissions`)
-- **Client-Side Fallback Engine**: In-browser JavaScript evaluation sandbox with stdout/stderr capture
+- **Client-Side Evaluation Engine**: In-browser JavaScript sandbox with stdout/stderr capture
+- **Codeforces Resilience Layer**: Official REST API + Multi-Proxy Fallback Cluster (`corsproxy.io` $\rightarrow$ `api.allorigins.win` $\rightarrow$ `api.codetabs.com`)
 
 ---
 
-## Architecture & System Workflows
+## 🏛 System Design & Architecture Flowcharts
 
-### 1v1 Matchmaking & Clash Flow
+### 1. High-Level System Topology Architecture
+
+```mermaid
+graph TD
+    Client["💻 Client Frontend (React 18 + Vite + Tailwind)"]
+    
+    subgraph Frontend Subsystems
+        Monaco["⚡ Monaco Code Studio IDE"]
+        Sound["🔊 WebAudio Synthesizer"]
+        CmdPal["🔍 Ctrl+K Command Palette"]
+        Animate["✨ Framer Motion Router"]
+        Snippet["📦 Smart Snippet Vault"]
+    end
+    
+    Client --> Monaco
+    Client --> Sound
+    Client --> CmdPal
+    Client --> Animate
+    Client --> Snippet
+
+    subgraph Core Backend Platform (FastAPI + Uvicorn)
+        REST["🔌 REST API Server (Port 8000)"]
+        WS["⚡ WebSocket Connection Manager"]
+        JudgeEngine["⚖️ Codeforces Verdict Engine"]
+        EloCalc["📈 Elo Rating Calculator Engine"]
+    end
+
+    Client -- HTTP Requests --> REST
+    Client -- Full-Duplex WebSockets --> WS
+
+    subgraph Data & Storage Layer
+        DB[("🗄️ PostgreSQL / SQLite Database")]
+    end
+
+    REST --> DB
+    WS --> DB
+    JudgeEngine --> REST
+
+    subgraph External Systems & Compilers
+        CF_API["🌐 Codeforces Official REST API"]
+        Piston["⚡ Piston Compilation API"]
+        CORS_Proxy["🛡️ CORS Proxy Fallback Cluster"]
+    end
+
+    JudgeEngine -- Verdict Verification --> CF_API
+    Monaco -- Code Execution --> Piston
+    Client -- Client-side Scraping --> CORS_Proxy
+    CORS_Proxy --> CF_API
+```
+
+---
+
+### 2. 1v1 Ranked Matchmaking & Clash Flowchart
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Player as Player 1
+    actor P1 as Player 1 (Alice)
+    actor P2 as Player 2 (Bob)
     participant Queue as Matchmaking Engine
     participant VS as Esports Entrance Screen
     participant Arena as 1v1 Race Room
-    participant Compiler as Execution API / CF Judge
+    participant CF as Codeforces API
     participant WS as WebSocket Server
 
-    Player->>Queue: Join Ranked Queue (Filter by ELO)
-    Queue-->>Queue: Widen ELO search window every 10s
-    Queue->>VS: Match Found (Opponent Matched)
-    VS->>VS: Trigger 3.5s Valorant-Style VS Split Entrance + Audio Chime
+    P1->>Queue: Join Ranked Queue (Target ELO: 1400)
+    P2->>Queue: Join Ranked Queue (Target ELO: 1400)
+    Queue-->>Queue: Matchmaker pairs P1 & P2 (Widen window every 10s)
+    Queue->>VS: Match Found Event
+    VS->>VS: Trigger 3.5s Valorant-Style VS Entrance + Audio Chime
     VS->>Arena: Redirect to Race Room (/race/:id)
     Arena->>WS: Connect WebSocket (/ws/race/:id)
-    WS-->>Arena: Broadcast Match Clock & Opponent Progress
-    Player->>Compiler: Run Code Locally (Monaco IDE) OR Submit on Codeforces
-    Compiler-->>Arena: Return Verdict (AC / WA / CE)
-    Arena->>WS: Broadcast Victory / ELO Delta
+    WS-->>Arena: Broadcast Match Clock & Opponent Status
+    
+    Note over P1,P2: Match Starts (30 Minute Duration)
+
+    P1->>CF: Submit C++ Solution on Codeforces
+    P1->>Arena: Click '✓ Check Submission'
+    Arena->>CF: Query user.status for P1 handle (creationTime >= matchStart)
+    CF-->>Arena: Verdict: OK (Accepted)
+    Arena->>WS: Broadcast Race Finished (Winner: P1)
+    WS-->>P1: Match Result (Elo Delta: +24)
+    WS-->>P2: Match Result (Elo Delta: -24)
 ```
 
-### Local Code Execution & Diff Comparison Pipeline
+---
+
+### 3. Local Code Execution & Diff Comparison Pipeline
 
 ```mermaid
 flowchart TD
@@ -78,67 +154,111 @@ flowchart TD
 
 ---
 
-## Key Features & Verified Implementation Details
+## 🧮 Algorithmic & Mathematical Models
 
-### 1. Embedded Monaco Code Studio (`CyberMonacoEditor.jsx`) & Smart Snippet Engine
-- **Multi-Language Selector**: Toggle between C++ 17 (g++), Python 3.10, Java 17, and JavaScript (Node.js 18) with language-specific starter boilerplates.
-- **Smart Non-Destructive CP Snippet Vault (`CPSnippetVault.jsx`)**: 1-click algorithm template insertion directly inside the Monaco header toolbar. Feature-rich smart code placement:
-  - `⚡ Fast I/O`: Injects `ios_base::sync_with_stdio(false); cin.tie(NULL);` directly inside `main()`.
-  - `🌐 DSU`, `🔢 ModPow`, `🌲 SegTree`: Injects helper structs and functions **ABOVE `int main()`** without overwriting your existing solution code.
-- **Smart Enter Key Auto-Indentation**: Preserves leading indentation on newline and automatically indents +4 spaces when opening blocks containing `{`, `:`, or `(`.
-- **Auto-Bracket Completion**: Automatic pair completion for `()`, `{}`, `[]`, `""`, and `''`.
-- **Tab Key Handling**: 4-space indentation handling.
-- **Test & Expected Output Tab**: Separate textareas for `stdin` inputs and `Expected Output` for test case verification.
-- **Diff & Result Verdict Engine**: Compares program `stdout` against `Expected Output` and outputs explicit status badges:
-  - `✓ PASSED (MATCHES EXPECTED)`
-  - `⚡ EXECUTED CLEANLY`
-  - `❌ FAILED (OUTPUT MISMATCH)`
-  - `❌ COMPILE / RUNTIME ERROR` (with full compiler error logs)
+### 1. Elo Rating Recalculation Model ($K = 32$)
+CodeClash enforces a zero-sum **Elo Rating Algorithm** for all 1v1 ranked clashes:
 
-### 2. 1v1 Matchmaking & Valorant-Style Entrance (`FindRace.jsx`)
-- ELO-rated queueing system widening search boundaries dynamically every 10 seconds.
-- Full-screen split-screen match entrance animation displaying Champion vs Challenger cards, handles, ELO ratings, glowing `VS` clash badge, audio cue, and a 3.5-second countdown progress bar.
+#### Expected Score Formula
+$$E_A = \frac{1}{1 + 10^{(R_B - R_A) / 400}}$$
 
-### 3. Solo Practice Arena (`Practice.jsx`)
-- Select target rating (800 to 2400 ELO) and problem tags (`dp`, `math`, `greedy`, `graphs`, `trees`, `strings`, `binary search`, etc.).
-- 2-Column side-by-side split layout featuring a 750px+ problem statement container alongside the Monaco Code Studio.
-- Live Codeforces API submission checker verifying real verdicts before clearing tasks.
+$$E_B = \frac{1}{1 + 10^{(R_A - R_B) / 400}}$$
 
-### 4. 1v1 Race Room (`Race.jsx`)
-- 2-Panel layout: Left panel houses the Race Clock and scraped Codeforces Problem Statement; right panel houses Race Actions and the 750px+ Monaco IDE workspace.
-- Real-time WebSocket listener broadcasting opponent progress and countdown clocks.
+#### Rating Update Formula
+$$R_A' = R_A + K \cdot (S_A - E_A)$$
+$$R_B' = R_B + K \cdot (S_B - E_B)$$
 
-### 5. 3D Holographic Trophy & Badges Gallery (`Badges.jsx`, `HolographicBadgeCard.jsx`)
-- Interactive 3D tilt physics powered by Framer Motion (`rotateX` / `rotateY` springs).
-- Dynamic metallic sheen light reflections that react to cursor movement.
-- SVG circular progress rings tracking requirement completion percentages.
-
-### 6. Zero-Asset Web Audio Synthesizer (`SoundContext.jsx`)
-- Built on browser Web Audio API utilizing synthesized sine/square/sawtooth oscillators and exponential gain ramps:
-  - `playCyberTap`: Navigation clicks
-  - `playAction`: Primary buttons and code compilation
-  - `playSadness`: Wrong answers and session quits
-  - `playVictory`: Accepted verdicts and passed test cases
-  - `playQueueFound`: Esports match found sound chime
-- Instant global mute control toggle integrated into top Navbar on all pages.
-
-### 7. Direct Friend Challenges (`Challenge.jsx`, `JoinChallenge.jsx`)
-- Create custom challenge rooms with specific problem ratings and durations, generating shareable invite tokens (`/challenge/TOKEN`).
-
-### 8. Global Cyber Command Palette — `Ctrl + K` / `⌘K` (`CommandPalette.jsx`)
-- Universal glassmorphic command modal with 3D rotating SVG vector icons, generous layout spacing, and automatic keyboard viewport scroll-tracking (`scrollIntoView`).
-- Allows instant 1-click navigation across all pages and audio toggle.
-
-### 9. Cyber Curtain Page Transitions (`PageTransition.jsx`)
-- Framer Motion `AnimatePresence` route synchronization with cubic-bezier drift (`y: 14px -> 0px`), scale scaling (`0.985 -> 1.0`), and Gaussian blur filter sweeps (`blur(5px) -> blur(0px)`).
-
-### 10. System Architecture & Topology Specifications (`docs/ARCHITECTURE.md`)
-- Comprehensive low-level architecture specs including Mermaid topology flowcharts, 1v1 WebSocket sequence diagrams, Elo rating recalculation math formulas ($K=32$), and multi-proxy failover resilience (`corsproxy.io` $\rightarrow$ `allorigins.win` $\rightarrow$ `codetabs.com`).
-
+Where $S_A = 1$ if Player A wins, $S_A = 0$ if Player A loses.
 
 ---
 
-## Directory Structure
+### 2. Real-Time Dynamic Topic Skill Proficiency Model
+In the **Analytics Engine**, topic skill levels are dynamically calculated from actual solved Codeforces problem tags and 1v1 match wins:
+
+$$\text{Proficiency}_T = \min\left(100, \max\left(25, \frac{\text{User Elo}}{25} + 7 \times \text{CF Solved}_T + 12 \times \text{Clash Wins}_T\right)\right)$$
+
+Where:
+- $\text{CF Solved}_T$: Number of unique problems solved on Codeforces matching topic tag $T$.
+- $\text{Clash Wins}_T$: Number of 1v1 match victories on problems containing topic tag $T$.
+
+---
+
+## 💎 Exhaustive Feature Directory
+
+### 1. Embedded Monaco Code Studio & Smart Snippet Vault (`CyberMonacoEditor.jsx`, `CPSnippetVault.jsx`)
+- **Multi-Language Support**: C++ 17 (g++), Python 3.10, Java 17, JavaScript (Node.js 18).
+- **Smart Non-Destructive Snippet Engine**:
+  - `⚡ Fast I/O`: Injects `ios_base::sync_with_stdio(false); cin.tie(NULL);` **directly inside `main()`**.
+  - `🌐 DSU`, `🔢 ModPow`, `🌲 SegTree`: Injects helper structs and functions **ABOVE `int main()`** without overwriting existing solution code.
+- **Smart Indentation & Auto-Brackets**: Preserves leading indentation on newline, indents +4 spaces on opening blocks `{`, `:`, `(`, and auto-closes bracket pairs.
+- **Diff & Result Verdict Engine**: Compares program stdout against expected output with visual status badges (`✓ PASSED`, `⚡ EXECUTED CLEANLY`, `❌ OUTPUT MISMATCH`, `❌ COMPILE ERROR`).
+
+---
+
+### 2. Global Cyber Command Palette — `Ctrl + K` / `⌘K` (`CommandPalette.jsx`)
+- **Universal Search**: Triggerable via `Ctrl + K` or by clicking the **`🔍 Search... ⌘K`** badge on the top Navbar.
+- **3D Rotating SVG Icons**: Features high-definition vector icons with continuous 3D rotation (`rotateY`) on active selection.
+- **Keyboard Viewport Scroll-Tracking**: Uses `scrollIntoView({ block: "nearest", behavior: "smooth" })` to automatically track active items as you navigate with `↑ / ↓` arrow keys.
+
+---
+
+### 3. Solo Practice Arena (`Practice.jsx`)
+- **Flexible Topic Selection**: Select target ratings (800 to 2400 ELO) and optional topic tags (defaulting to **ALL TOPICS** if zero tags selected).
+- **Client-Side Scraping Resilience**: Scrapes Codeforces problem statements via multi-proxy failover clusters.
+- **1-Click Copy Buttons**: 1-click **Copy Input** & **Copy Output** buttons on all Codeforces sample testcase boxes.
+- **Session Auto-Recovery**: Lightweight `localStorage` session recovery allowing page refreshes without losing timer state or active tasks.
+
+---
+
+### 4. 1v1 Ranked Matchmaking & Esports Entrance (`FindRace.jsx`, `Race.jsx`)
+- ELO-rated queueing system expanding search boundaries dynamically every 10 seconds.
+- Full-screen split-screen match entrance animation displaying Champion vs Challenger cards, handles, ELO ratings, glowing `VS` badge, audio cue, and a 3.5-second countdown progress bar.
+- Real-time WebSocket connection broadcasting opponent progress and match clocks.
+- **Anti-Cheat Verification**: Verifies Codeforces API verdicts submitted **after match start time**.
+
+---
+
+### 5. Dynamic Analytics Radar Chart (`Analytics.jsx`)
+- Recharts 6-axis Radar chart rendering live skill distributions for `Implementation`, `Math`, `Greedy`, `DP`, `Graphs`, and `Strings`.
+- Win/Loss pie chart breakdown and automatic **Top Proficiency** detection.
+
+---
+
+### 6. 3D Holographic Trophy & Badges Gallery (`Badges.jsx`, `HolographicBadgeCard.jsx`)
+- Interactive 3D tilt physics powered by Framer Motion (`rotateX` / `rotateY` springs).
+- Dynamic metallic sheen light reflections reacting to cursor position.
+- SVG circular progress rings tracking milestone completion percentages.
+
+---
+
+### 7. Zero-Asset Web Audio Synthesizer (`SoundContext.jsx`)
+- Low-latency Web Audio API synthesizer utilizing sine, triangle, and sawtooth oscillators:
+  - `playCyberTap`: Menu clicks
+  - `playAction`: Primary buttons and compilation
+  - `playSadness`: Errors and forfeits
+  - `playVictory`: Accepted verdicts
+  - `playQueueFound`: Match found chime
+- Instant global mute toggle on Navbar.
+
+---
+
+### 8. User Account & Codeforces Verification Engine (`Settings.jsx`, `LinkCF.jsx`, `AuthContext.jsx`)
+- Deep glassmorphism cards with high-contrast white typography.
+- Cryptographic verification code placed in Codeforces profile social settings.
+- Direct database profile synchronization (`/me`) on login and mount, ensuring verified Codeforces handles (`cf_verified: true`) persist seamlessly across logouts and re-logins.
+
+---
+
+## ⚡ Performance Optimizations & Resilience
+
+1. **Storage Memory Lockup Prevention**: Large scraped HTML strings are excluded from the 1000ms timer persistence loop to prevent browser DOM storage quota lockups.
+2. **Standard AbortController Timeouts**: Replaced unsupported browser APIs (`AbortSignal.timeout`) with standard `AbortController` + `setTimeout` handlers.
+3. **TeX/LaTeX Parsing Immunity**: Wrapped TeX math regex cleaners inside `try / catch` blocks to guarantee zero render exceptions.
+4. **Database Profile Auto-Sync**: `AuthContext.jsx` always fetches fresh profile data from the database (`/me`) on login and mount.
+
+---
+
+## 📂 Project Directory Structure
 
 ```text
 CodeClash/
@@ -146,37 +266,39 @@ CodeClash/
 │   ├── src/
 │   │   ├── api/                   # API client (auth, races, codeforces)
 │   │   ├── components/
-│   │   │   ├── common/            # SpotlightCard, HolographicBadgeCard, Backgrounds
+│   │   │   ├── common/            # CommandPalette, CPSnippetVault, AntigravityCyberBackground
 │   │   │   ├── editor/            # CyberMonacoEditor (Multi-lang IDE)
 │   │   │   └── layout/            # Navbar, PageLayout, Footer
 │   │   ├── context/               # AuthContext, ThemeContext, SoundContext
-│   │   ├── pages/                 # Landing, Practice, Race, FindRace, Badges, Analytics, etc.
-│   │   ├── App.jsx                # Router configuration & Protected Routes
+│   │   ├── pages/                 # Landing, Practice, Race, FindRace, Badges, Analytics, Settings, LinkCF
+│   │   ├── App.jsx                # Router configuration & AnimatePresence Page Transitions
 │   │   ├── index.css              # Design tokens, typography, math rendering rules
 │   │   └── main.jsx               # React entry point
 │   └── package.json
 │
 ├── backend/
-│   ├── app/                       # FastAPI application modules
-│   ├── auth.py                    # JWT authentication & bcrypt security
-│   ├── cf_client.py               # Codeforces scraping & API client
-│   ├── db.py                      # Database session management
-│   ├── elo.py                     # ELO calculation algorithm
-│   ├── matchmaking.py             # Matchmaking queue engine
-│   ├── websocket.py               # Real-time WebSocket connection manager
-│   ├── main.py                    # FastAPI app entry point
+│   ├── app/
+│   │   ├── middleware/            # Rate limiting & CORS middleware
+│   │   ├── routers/               # auth, users, codeforces, races, challenges, leaderboard, health
+│   │   ├── services/              # CF API client, match engine, race service
+│   │   ├── database.py            # PostgreSQL table schema & initialization
+│   │   ├── dependencies.py        # Database pool & JWT auth dependencies
+│   │   ├── main.py                # FastAPI entry point & CORS configuration
+│   │   └── models.py              # Pydantic data schemas
 │   └── requirements.txt
 │
+├── docs/
+│   └── ARCHITECTURE.md            # Low-level system design & sequence flowcharts
 └── README.md
 ```
 
 ---
 
-## Installation & Setup
+## 🚀 Installation & Local Setup
 
 ### Prerequisites
-- Node.js (v18+)
-- Python (v3.10+)
+- **Node.js**: v18.0.0 or higher
+- **Python**: v3.10.0 or higher
 
 ### 1. Frontend Setup
 ```bash
@@ -184,12 +306,13 @@ cd frontend
 npm install
 npm run dev
 ```
-The application will start at `http://localhost:5173`.
+The frontend application will start at `http://localhost:5173`.
 
 ### 2. Backend Setup
 ```bash
 cd backend
 python -m venv venv
+
 # On Windows:
 venv\Scripts\activate
 # On Linux/macOS:
@@ -198,11 +321,11 @@ source venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
-The backend server will run at `http://localhost:8000`.
+The backend API server will start at `http://localhost:8000`.
 
 ---
 
-## Environment Variables
+## 🔑 Environment Variables
 
 ### Frontend (`frontend/.env`)
 ```env
@@ -219,6 +342,5 @@ CODEFORCES_API_URL=https://codeforces.com/api
 
 ---
 
-## License
-
-MIT License. Built for competitive programmers and software engineers.
+## 📜 License
+MIT License. Built for competitive programmers and software engineers who'd rather battle than grind alone.
