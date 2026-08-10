@@ -676,10 +676,11 @@ export default function Race() {
                           </a>
                         </div>
                         <iframe
-                          src={`https://codeforces.com/contest/${cfContestId}/problem/${cfIndex}?locale=en`}
-                          className="w-full h-[750px] bg-[#1a1a24] rounded-b-xl border-none"
+                          src={`https://r.jina.ai/https://codeforces.com/contest/${cfContestId}/problem/${cfIndex}?locale=en`}
+                          className="w-full h-[750px] bg-[#14141e] text-text-primary rounded-b-xl border-none p-2"
                           title="Codeforces Problem Statement"
                         />
+
 
                       </div>
                     )
