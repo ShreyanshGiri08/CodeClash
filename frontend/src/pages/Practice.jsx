@@ -128,16 +128,16 @@ async function fetchCFStatementClientSide(contestId, index) {
     }
   } catch (_) {}
 
-  // 2. Client-side CORS proxies fetching mobile & desktop Codeforces HTML
-  const desktopUrl = `https://codeforces.com/problemset/problem/${contestId}/${index}`;
-  const mobileUrl = `https://m.codeforces.com/problemset/problem/${contestId}/${index}`;
+  // 2. Client-side CORS proxies fetching mobile & desktop Codeforces HTML in English
+  const desktopUrl = `https://codeforces.com/problemset/problem/${contestId}/${index}?locale=en`;
+  const mobileUrl = `https://m.codeforces.com/problemset/problem/${contestId}/${index}?locale=en`;
 
   const proxyUrls = [
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(mobileUrl)}`,
-    `https://api.allorigins.win/raw?url=${encodeURIComponent(desktopUrl)}`,
-    `https://corsproxy.io/?${encodeURIComponent(mobileUrl)}`,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(desktopUrl)}`,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(mobileUrl)}`,
     `https://corsproxy.io/?${encodeURIComponent(desktopUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(mobileUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(mobileUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(desktopUrl)}`,
   ];
 
   for (const pUrl of proxyUrls) {
@@ -148,7 +148,16 @@ async function fetchCFStatementClientSide(contestId, index) {
       clearTimeout(timeoutId);
       if (!resp || !resp.ok) continue;
 
-      const html = await resp.text();
+      let html = await resp.text();
+      if (!html || html.length < 50) continue;
+
+      if (html.trim().startsWith("{")) {
+        try {
+          const parsed = JSON.parse(html);
+          if (parsed && parsed.contents) html = parsed.contents;
+        } catch (_) {}
+      }
+
       if (!html || html.length < 100) continue;
 
       const parser = new DOMParser();
@@ -172,6 +181,7 @@ async function fetchCFStatementClientSide(contestId, index) {
       }
     } catch (_) {}
   }
+
 
   return null;
 }
