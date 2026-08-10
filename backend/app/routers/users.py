@@ -98,23 +98,27 @@ async def get_rating_history(
     conn: asyncpg.Connection = Depends(get_db),
 ):
     """Get a user's Elo rating history for the graph."""
-    uid = uuid.UUID(target_user_id) if isinstance(target_user_id, str) else target_user_id
-    rows = await conn.fetch(
-        """SELECT elo_after, elo_change, recorded_at, race_id
-           FROM rating_history
-           WHERE user_id = $1
-           ORDER BY recorded_at ASC""",
-        uid,
-    )
-    return [
-        {
-            "elo_after": r["elo_after"],
-            "elo_change": r["elo_change"],
-            "recorded_at": r["recorded_at"].isoformat(),
-            "race_id": str(r["race_id"]) if r["race_id"] else None,
-        }
-        for r in rows
-    ]
+    try:
+        uid = uuid.UUID(target_user_id) if isinstance(target_user_id, str) else target_user_id
+        rows = await conn.fetch(
+            """SELECT elo_after, elo_change, recorded_at, race_id
+               FROM rating_history
+               WHERE user_id = $1
+               ORDER BY recorded_at ASC""",
+            uid,
+        )
+        return [
+            {
+                "elo_after": r["elo_after"],
+                "elo_change": r["elo_change"] if "elo_change" in r and r["elo_change"] is not None else 0,
+                "recorded_at": r["recorded_at"].isoformat() if "recorded_at" in r and r["recorded_at"] else None,
+                "race_id": str(r["race_id"]) if "race_id" in r and r["race_id"] else None,
+            }
+            for r in rows
+        ]
+    except Exception as e:
+        logger.exception(f"Error fetching rating history for {target_user_id}")
+        return []
 
 
 @router.get("/races/history")
