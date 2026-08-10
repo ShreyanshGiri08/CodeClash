@@ -120,7 +120,7 @@ function cleanLaTeX(html) {
 
 // Fetch problem statement via CORS proxies
 async function fetchCFStatementClientSide(contestId, index) {
-  // 1. Try our backend statement scraper first (fastest & zero CORS restrictions)
+  // 1. Try backend statement scraper first (fastest & zero CORS restrictions)
   try {
     const backendData = await apiCall(`/cf/problem-statement/${contestId}/${index}`).catch(() => null);
     if (backendData && backendData.html) {
@@ -128,53 +128,54 @@ async function fetchCFStatementClientSide(contestId, index) {
     }
   } catch (_) {}
 
-  // 2. Fallback to client-side CORS proxies
-  const cfUrl = `https://codeforces.com/problemset/problem/${contestId}/${index}`;
-  const encoded = encodeURIComponent(cfUrl);
+  // 2. Client-side CORS proxies fetching mobile & desktop Codeforces HTML
+  const desktopUrl = `https://codeforces.com/problemset/problem/${contestId}/${index}`;
+  const mobileUrl = `https://m.codeforces.com/problemset/problem/${contestId}/${index}`;
 
-  const proxies = [
-    `https://m.codeforces.com/problemset/problem/${contestId}/${index}`,
-    `https://m.codeforces.com/contest/${contestId}/problem/${index}`,
-    `https://r.jina.ai/${cfUrl}`,
-    `https://api.allorigins.win/get?url=${encoded}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encoded}`,
+  const proxyUrls = [
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(mobileUrl)}`,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(desktopUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(mobileUrl)}`,
+    `https://corsproxy.io/?${encodeURIComponent(desktopUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(mobileUrl)}`,
   ];
-  for (const proxy of proxies) {
+
+  for (const pUrl of proxyUrls) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
-      const resp = await fetch(proxy, { signal: controller.signal }).catch(() => null);
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const resp = await fetch(pUrl, { signal: controller.signal }).catch(() => null);
       clearTimeout(timeoutId);
       if (!resp || !resp.ok) continue;
 
-      let html;
-      if (proxy.includes("allorigins")) {
-        const data = await resp.json();
-        html = data.contents;
-      } else {
-        html = await resp.text();
-      }
-      if (!html) continue;
+      const html = await resp.text();
+      if (!html || html.length < 100) continue;
+
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, "text/html");
+
       const stDiv =
         doc.querySelector(".problem-statement") ||
         doc.querySelector(".problemstatement") ||
-        doc.querySelector(".ttypography");
+        doc.querySelector(".ttypography") ||
+        doc.querySelector(".sample-tests");
+
       if (stDiv) {
         stDiv.querySelectorAll("img").forEach((img) => {
-          if (img.src && !img.src.startsWith("http"))
+          if (img.src && !img.src.startsWith("http")) {
             img.src = "https://codeforces.com" + img.getAttribute("src");
+          }
         });
         const hdr = stDiv.querySelector(".header");
         if (hdr) hdr.remove();
         return stDiv.innerHTML;
-
       }
-    } catch (_) { /* try next */ }
+    } catch (_) {}
   }
+
   return null;
 }
+
 
 // Dynamically fetch REAL problem matching EXACT target rating and tags from Codeforces API
 async function fetchRealCFProblem(targetRating, selectedTags) {
