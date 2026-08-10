@@ -49,14 +49,14 @@
 
 ```mermaid
 graph TD
-    Client["💻 Client Frontend (React 18 + Vite + Tailwind)"]
+    Client["Client Frontend (React 18 + Vite + Tailwind)"]
     
-    subgraph Frontend Subsystems
-        Monaco["⚡ Monaco Code Studio IDE"]
-        Sound["🔊 WebAudio Synthesizer"]
-        CmdPal["🔍 Ctrl+K Command Palette"]
-        Animate["✨ Framer Motion Router"]
-        Snippet["📦 Smart Snippet Vault"]
+    subgraph FrontendSubsystems["Frontend Subsystems"]
+        Monaco["Monaco Code Studio IDE"]
+        Sound["WebAudio Synthesizer"]
+        CmdPal["Ctrl+K Command Palette"]
+        Animate["Framer Motion Router"]
+        Snippet["Smart Snippet Vault"]
     end
     
     Client --> Monaco
@@ -65,28 +65,28 @@ graph TD
     Client --> Animate
     Client --> Snippet
 
-    subgraph Core Backend Platform (FastAPI + Uvicorn)
-        REST["🔌 REST API Server (Port 8000)"]
-        WS["⚡ WebSocket Connection Manager"]
-        JudgeEngine["⚖️ Codeforces Verdict Engine"]
-        EloCalc["📈 Elo Rating Calculator Engine"]
+    subgraph BackendPlatform["Core Backend Platform (FastAPI + Uvicorn)"]
+        REST["REST API Server (Port 8000)"]
+        WS["WebSocket Connection Manager"]
+        JudgeEngine["Codeforces Verdict Engine"]
+        EloCalc["Elo Rating Calculator Engine"]
     end
 
     Client -- HTTP Requests --> REST
     Client -- Full-Duplex WebSockets --> WS
 
-    subgraph Data & Storage Layer
-        DB[("🗄️ PostgreSQL / SQLite Database")]
+    subgraph DataStorageLayer["Data & Storage Layer"]
+        DB[("PostgreSQL / SQLite Database")]
     end
 
     REST --> DB
     WS --> DB
     JudgeEngine --> REST
 
-    subgraph External Systems & Compilers
-        CF_API["🌐 Codeforces Official REST API"]
-        Piston["⚡ Piston Compilation API"]
-        CORS_Proxy["🛡️ CORS Proxy Fallback Cluster"]
+    subgraph ExternalCompilers["External Systems & Compilers"]
+        CF_API["Codeforces Official REST API"]
+        Piston["Piston Compilation API"]
+        CORS_Proxy["CORS Proxy Fallback Cluster"]
     end
 
     JudgeEngine -- Verdict Verification --> CF_API
@@ -94,6 +94,7 @@ graph TD
     Client -- Client-side Scraping --> CORS_Proxy
     CORS_Proxy --> CF_API
 ```
+
 
 ---
 
@@ -327,18 +328,30 @@ The backend API server will start at `http://localhost:8000`.
 
 ## 🔑 Environment Variables
 
-### Frontend (`frontend/.env`)
+### Frontend Configuration (`frontend/.env`)
+
 ```env
-VITE_API_URL=http://localhost:8000
-VITE_WS_URL=ws://localhost:8000/ws
+# Backend REST API base URL (uses Vite proxy /api by default in development)
+VITE_API_URL=http://localhost:8000/api
+
+# Real-time WebSocket connection URL for 1v1 Ranked Clashes
+VITE_WS_URL=ws://localhost:8000
 ```
 
-### Backend (`backend/.env`)
+### Backend Configuration (`backend/.env`)
+
 ```env
+# Cryptographic secret key used to sign and verify JWT authorization tokens
+JWT_SECRET=your_super_secret_jwt_key
 SECRET_KEY=your_super_secret_jwt_key
-DATABASE_URL=sqlite+aiosqlite:///./codeclash.db
+
+# Database Connection URI (PostgreSQL or Async SQLite)
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/codeclash
+
+# Official Codeforces API Endpoint
 CODEFORCES_API_URL=https://codeforces.com/api
 ```
+
 
 ---
 

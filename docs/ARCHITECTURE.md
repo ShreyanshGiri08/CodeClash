@@ -8,13 +8,13 @@ This document presents the low-level system design, topology, real-time WebSocke
 
 ```mermaid
 graph TD
-    Client["💻 Client Frontend (React 18 + Vite + Tailwind)"]
+    Client["Client Frontend (React 18 + Vite + Tailwind)"]
     
-    subgraph Frontend Subsystems
-        Monaco["⚡ Monaco Code Studio IDE"]
-        Sound["🔊 WebAudio Synthesizer"]
-        CmdPal["🔍 Ctrl+K Command Palette"]
-        Animate["✨ Framer Motion Router"]
+    subgraph FrontendSubsystems["Frontend Subsystems"]
+        Monaco["Monaco Code Studio IDE"]
+        Sound["WebAudio Synthesizer"]
+        CmdPal["Ctrl+K Command Palette"]
+        Animate["Framer Motion Router"]
     end
     
     Client --> Monaco
@@ -22,33 +22,34 @@ graph TD
     Client --> CmdPal
     Client --> Animate
 
-    subgraph Core Backend Platform (Node.js + Express)
-        REST["🔌 REST API Server (Port 5000)"]
-        WS["⚡ Socket.io Real-time Server"]
-        JudgeEngine["⚖️ Codeforces Verdict Engine"]
-        EloCalc["📈 Elo Rating Calculator Engine"]
+    subgraph BackendPlatform["Core Backend Platform (FastAPI + Uvicorn)"]
+        REST["REST API Server (Port 8000)"]
+        WS["WebSocket Connection Manager"]
+        JudgeEngine["Codeforces Verdict Engine"]
+        EloCalc["Elo Rating Calculator Engine"]
     end
 
     Client -- HTTP Requests --> REST
     Client -- Full-Duplex WebSockets --> WS
 
-    subgraph Data & Storage Layer
-        DB[("🗄️ SQLite / PostgreSQL Database")]
+    subgraph DataStorageLayer["Data & Storage Layer"]
+        DB[("PostgreSQL / SQLite Database")]
     end
 
     REST --> DB
     WS --> DB
     JudgeEngine --> REST
 
-    subgraph External Systems
-        CF_API["🌐 Codeforces Official REST API"]
-        CORS_Proxy["🛡️ CORS Proxy Fallback Cluster"]
+    subgraph ExternalSystems["External Systems & Compilers"]
+        CF_API["Codeforces Official REST API"]
+        CORS_Proxy["CORS Proxy Fallback Cluster"]
     end
 
     JudgeEngine -- Verdict Verification --> CF_API
     Client -- Client-side Scraping --> CORS_Proxy
     CORS_Proxy --> CF_API
 ```
+
 
 ---
 
