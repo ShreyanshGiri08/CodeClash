@@ -7,7 +7,7 @@ import PageLayout from "../components/layout/PageLayout";
 
 export default function JoinChallenge() {
   const { token } = useParams();
-  const { user, isAuthenticated } = useAuth();
+  const { user, loading: authLoading, isAuthenticated } = useAuth();
   const [challenge, setChallenge] = useState(null);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
@@ -69,7 +69,7 @@ export default function JoinChallenge() {
     navigate("/dashboard");
   }
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <PageLayout>
         <div className="flex items-center justify-center min-h-[80vh]">
@@ -105,10 +105,14 @@ export default function JoinChallenge() {
   }
 
 
-  const isCreator = user && challenge && (
-    (user.id && challenge.creator_id && String(user.id) === String(challenge.creator_id)) ||
-    (user.cf_handle && challenge.creator_handle && user.cf_handle.toLowerCase() === challenge.creator_handle.toLowerCase())
+  const isCreator = Boolean(
+    user && challenge && (
+      (user.id && challenge.creator_id && String(user.id).toLowerCase() === String(challenge.creator_id).toLowerCase()) ||
+      (user.cf_handle && challenge.creator_handle && user.cf_handle.toLowerCase() === challenge.creator_handle.toLowerCase()) ||
+      (user.display_name && challenge.creator_name && user.display_name.toLowerCase() === challenge.creator_name.toLowerCase())
+    )
   );
+
 
 
   return (

@@ -84,12 +84,14 @@ async def get_challenge(
                 "token": challenge["token"],
                 "status": challenge["status"],
                 "race_id": str(challenge["race_id"]) if challenge["race_id"] else None,
+                "creator_id": str(challenge["creator_id"]),
                 "creator_handle": challenge["cf_handle"],
                 "creator_elo": challenge["elo"],
                 "creator_avatar": challenge["avatar"],
                 "creator_name": challenge["display_name"] or challenge["cf_handle"],
                 "problem_rating": challenge["problem_rating"],
             }
+
 
         # Check expiry safely
         if is_expired(challenge["expires_at"]):

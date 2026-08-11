@@ -68,15 +68,22 @@ async def add_to_queue(user_id: str, elo: int) -> Optional[dict]:
     settings = get_settings()
 
     async with queue_lock:
-        # Don't add if already in queue
-        for entry in queue:
-            if entry["user_id"] == user_id:
-                return None
-
         now = time.time()
+        # Purge stale entries (> 300 seconds old)
+        queue[:] = [e for e in queue if now - e["joined_at"] < 300]
+
+        # Don't match with self or duplicate
+        for entry in queue:
+            if str(entry["user_id"]) == str(user_id):
+                entry["joined_at"] = now
+                entry["elo"] = elo
+                return None
 
         # Try to find a match using expanding band from both sides
         for i, entry in enumerate(queue):
+            if str(entry["user_id"]) == str(user_id):
+                continue
+
             # Check if the new user's initial band reaches the queued user
             new_user_band = settings.MATCHMAKING_INITIAL_BAND
             # Check if the queued user's (expanded) band reaches the new user
@@ -99,9 +106,10 @@ async def add_to_queue(user_id: str, elo: int) -> Optional[dict]:
                 return opponent
 
         # No match — add to queue
-        queue.append({"user_id": user_id, "elo": elo, "joined_at": now})
+        queue.append({"user_id": str(user_id), "elo": elo, "joined_at": now})
         logger.info("Added to queue", extra={"user_id": user_id, "elo": elo, "queue_size": len(queue)})
         return None
+
 
 
 async def remove_from_queue(user_id: str):
