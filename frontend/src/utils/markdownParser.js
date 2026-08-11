@@ -234,10 +234,32 @@ export function parseMarkdownToCFHTML(mdText) {
       continue;
     }
 
-    // Clean Math Formatting & Paragraphs
+    // Clean Math Formatting & TeX symbols (e.g. 10^{4} -> 10⁴, \le / \leq -> ≤, \left|\right. s -> |s|)
     let formattedLine = line;
 
-    // Clean Jina LaTeX variables (_n_, _p_ _i_, _p_ _i_ + 1 -> n, p_i, p_i + 1)
+    // 1. Clean LaTeX left/right bracket delimiters (e.g. \left| \right. s \left| \right. -> |s|)
+    formattedLine = formattedLine.replace(/\\left\|\s*\\right\.\s*/g, "|");
+    formattedLine = formattedLine.replace(/\\left\|\s*\\right\|/g, "|");
+    formattedLine = formattedLine.replace(/\\left\|/g, "|").replace(/\\right\|/g, "|");
+    formattedLine = formattedLine.replace(/\\left\(/g, "(").replace(/\\right\)/g, ")");
+    formattedLine = formattedLine.replace(/\\left\[/g, "[").replace(/\\right\]/g, "]");
+    formattedLine = formattedLine.replace(/\\left\\\{/g, "{").replace(/\\right\\\}/g, "}");
+
+    // 2. Clean TeX powers 10^{4} -> 10⁴, n^{2} -> n², 10^5 -> 10⁵
+    formattedLine = formattedLine.replace(/10\^\{([0-9]+)\}/g, (m, p) => `10<sup>${p}</sup>`);
+    formattedLine = formattedLine.replace(/([a-zA-Z0-9])\^\{([a-zA-Z0-9\+\-]+)\}/g, `$1<sup>$2</sup>`);
+    formattedLine = formattedLine.replace(/([a-zA-Z0-9])\^([0-9]+)/g, `$1<sup>$2</sup>`);
+
+    // 3. Clean Inequalities & Operators (\leq / \le -> ≤, \geq / \ge -> ≥, \cdot -> ·, \times -> ×)
+    formattedLine = formattedLine.replace(/\\leq|\\le/g, "≤");
+    formattedLine = formattedLine.replace(/\\geq|\\ge/g, "≥");
+    formattedLine = formattedLine.replace(/\\cdot/g, "·");
+    formattedLine = formattedLine.replace(/\\times/g, "×");
+    formattedLine = formattedLine.replace(/\\neq|\\ne/g, "≠");
+    formattedLine = formattedLine.replace(/\\to|\\rightarrow/g, "→");
+    formattedLine = formattedLine.replace(/\\dots/g, "...");
+
+    // 4. Clean Jina LaTeX variables (_n_, _p_ _i_, _p_ _i_ + 1 -> n, p_i, p_i + 1)
     formattedLine = formattedLine.replace(/_([a-zA-Z0-9_]+)_/g, '<code class="font-mono text-accent bg-accent/15 px-1 py-0.5 rounded text-xs font-bold">$1</code>');
     formattedLine = formattedLine.replace(/_([a-zA-Z0-9])\s+_([a-zA-Z0-9])_/g, '<code class="font-mono text-accent bg-accent/15 px-1 py-0.5 rounded text-xs font-bold">$1_$2</code>');
 
@@ -255,7 +277,8 @@ export function parseMarkdownToCFHTML(mdText) {
 
     formattedLine = formattedLine.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer" class="text-accent underline font-mono hover:text-white">$1</a>');
     formattedLine = formattedLine.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-accent/90">$1</strong>');
-    formattedLine = formattedLine.replace(/\$([^\$]+)\$/g, '<span class="tex-span font-mono text-accent/90">$1</span>');
+    formattedLine = formattedLine.replace(/\$([^\$]+)\$/g, '<code class="font-mono text-accent bg-accent/15 border border-accent/30 px-1 py-0.5 rounded text-xs font-bold">$1</code>');
+
 
     if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
       const listContent = formattedLine.replace(/^[\*\-]\s*/, "");
