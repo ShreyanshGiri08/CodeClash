@@ -170,38 +170,94 @@ function cleanLaTeX(html) {
   }
 }
 
+function convertJinaMarkdownToCFHTML(mdText) {
+  if (!mdText || !mdText.includes("Markdown Content:")) return null;
 
+  const contentStart = mdText.indexOf("Markdown Content:");
+  let content = mdText.substring(contentStart + "Markdown Content:".length).trim();
+
+  const lines = content.split("\n");
+  let htmlParts = ['<div class="problem-statement">'];
+  let inCodeBlock = false;
+  let codeLines = [];
+
+  for (let line of lines) {
+    let trimmed = line.trim();
+
+    if (trimmed.startsWith("```")) {
+      if (inCodeBlock) {
+        const codeContent = codeLines.join("\n");
+        htmlParts.push(`<pre class="sample-test-box bg-[#0d0d15] text-accent p-3.5 rounded-xl border border-accent/30 font-mono text-xs my-3 overflow-x-auto select-all"><code>${codeContent}</code></pre>`);
+        codeLines = [];
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+      }
+      continue;
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(line);
+      continue;
+    }
+
+    if (trimmed === "Input") {
+      htmlParts.push('<div class="section-title text-accent font-extrabold text-sm mt-5 mb-2 border-b border-accent/20 pb-1">// INPUT SPECIFICATION</div>');
+    } else if (trimmed === "Output") {
+      htmlParts.push('<div class="section-title text-accent font-extrabold text-sm mt-5 mb-2 border-b border-accent/20 pb-1">// OUTPUT SPECIFICATION</div>');
+    } else if (trimmed === "Example" || trimmed === "Examples") {
+      htmlParts.push('<div class="section-title text-accent font-extrabold text-sm mt-5 mb-2 border-b border-accent/20 pb-1">// SAMPLE TEST CASES</div>');
+    } else if (trimmed === "Note") {
+      htmlParts.push('<div class="section-title text-accent font-extrabold text-sm mt-5 mb-2 border-b border-accent/20 pb-1">// NOTE</div>');
+    } else if (trimmed === "Copy" || trimmed.startsWith("Title:") || trimmed.startsWith("URL Source:") || trimmed === "---") {
+      continue;
+    } else if (trimmed) {
+      let formattedLine = line.replace(/\$([^\$]+)\$/g, '<span class="tex-span font-mono text-accent/90">$1</span>');
+      htmlParts.push(`<p class="mb-3 text-sm leading-relaxed text-text-primary">${formattedLine}</p>`);
+    }
+  }
+
+  htmlParts.push('</div>');
+  return htmlParts.join("");
+}
+
+// Fetch problem statement via CORS proxies
 async function fetchCFStatementClientSide(contestId, index) {
   // 1. Try backend statement scraper first (fastest & zero CORS restrictions)
   try {
     const backendData = await apiCall(`/cf/problem-statement/${contestId}/${index}`).catch(() => null);
     if (backendData && backendData.html) {
-      return cleanLaTeX(backendData.html);
+      return backendData.html;
     }
   } catch (_) { }
 
-  // 2. Client-side CORS proxies fetching mobile & desktop Codeforces HTML in English
-  const desktopUrl = `https://codeforces.com/contest/${contestId}/problem/${index}?locale=en`;
-  const mobileUrl = `https://m.codeforces.com/contest/${contestId}/problem/${index}?locale=en`;
+  // 2. Client-side CORS proxies fetching Codeforces Markdown & HTML in English
+  const contestUrl = `https://codeforces.com/contest/${contestId}/problem/${index}?locale=en`;
+  const desktopUrl = `https://codeforces.com/problemset/problem/${contestId}/${index}?locale=en`;
 
   const proxyUrls = [
+    `https://r.jina.ai/${contestUrl}`,
+    `https://r.jina.ai/${desktopUrl}`,
+    `https://api.allorigins.win/get?url=${encodeURIComponent(contestUrl)}`,
     `https://api.allorigins.win/get?url=${encodeURIComponent(desktopUrl)}`,
-    `https://api.allorigins.win/get?url=${encodeURIComponent(mobileUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(desktopUrl)}`,
-    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(mobileUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(contestUrl)}`,
   ];
-
 
   for (const pUrl of proxyUrls) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 6000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
       const resp = await fetch(pUrl, { signal: controller.signal }).catch(() => null);
       clearTimeout(timeoutId);
       if (!resp || !resp.ok) continue;
 
       let html = await resp.text();
       if (!html || html.length < 50) continue;
+
+      if (pUrl.includes("r.jina.ai") && html.includes("Markdown Content:")) {
+        const parsedHtml = convertJinaMarkdownToCFHTML(html);
+        if (parsedHtml) return parsedHtml;
+      }
 
       if (html.trim().startsWith("{")) {
         try {
