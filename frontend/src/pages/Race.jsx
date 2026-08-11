@@ -513,6 +513,76 @@ export default function Race() {
     }
   }, [problem]);
 
+  // Live DOM Copy Button Injector for Sample Inputs & Outputs in Race page
+  useEffect(() => {
+    const activeStatement = problem?.html || clientHtml;
+    if (!activeStatement) return;
+
+    const timer = setTimeout(() => {
+      const container = document.querySelector(".problem-statement");
+      if (!container) return;
+
+      const testNodes = container.querySelectorAll(".input, .output, .sample-test-container, pre");
+      testNodes.forEach((node) => {
+        if (node.querySelector(".copy-btn-injected")) return;
+
+        const pre = node.tagName === "PRE" ? node : node.querySelector("pre");
+        if (!pre) return;
+
+        const textToCopy = (pre.innerText || pre.textContent || "").trim();
+        if (!textToCopy) return;
+
+        let targetHeader = node.querySelector(".title");
+
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "copy-btn-injected ml-auto font-mono text-[10px] font-extrabold bg-accent/20 hover:bg-accent hover:text-black text-accent border border-accent/40 px-2.5 py-1 rounded transition-all cursor-pointer inline-flex items-center gap-1 z-10 select-none";
+        btn.innerText = "📋 COPY";
+
+        btn.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(textToCopy).then(() => {
+              btn.innerText = "✓ COPIED!";
+              btn.classList.add("bg-green-500", "text-black");
+              setTimeout(() => {
+                btn.innerText = "📋 COPY";
+                btn.classList.remove("bg-green-500", "text-black");
+              }, 2000);
+            }).catch(() => {
+              if (window.copyTextToClipboard) window.copyTextToClipboard(btn, encodeURIComponent(textToCopy));
+            });
+          } else {
+            if (window.copyTextToClipboard) window.copyTextToClipboard(btn, encodeURIComponent(textToCopy));
+          }
+        };
+
+        if (targetHeader) {
+          targetHeader.style.display = "flex";
+          targetHeader.style.alignItems = "center";
+          targetHeader.style.justifyContent = "space-between";
+          targetHeader.appendChild(btn);
+        } else if (pre.parentNode) {
+          const headerBar = document.createElement("div");
+          headerBar.className = "flex items-center justify-between bg-[#121220] px-3.5 py-1.5 border-b border-accent/20 rounded-t-xl font-mono text-xs my-1";
+          
+          const isInputNode = node.classList.contains("input") || (node.innerText && node.innerText.toLowerCase().includes("input"));
+          const label = document.createElement("span");
+          label.className = "text-accent font-bold tracking-wider";
+          label.innerText = isInputNode ? "// SAMPLE INPUT" : "// SAMPLE OUTPUT";
+          
+          headerBar.appendChild(label);
+          headerBar.appendChild(btn);
+          pre.parentNode.insertBefore(headerBar, pre);
+        }
+      });
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [problem, clientHtml]);
+
+
   // Calculate real elapsed from race start in UTC
   let realElapsed = elapsed;
   const raceDurationSeconds = race?.duration_minutes ? race.duration_minutes * 60 : (40 * 60);
@@ -720,7 +790,8 @@ export default function Race() {
               </div>
 
               {/* Problem Statement Glass Panel */}
-              <div className="bg-black/80 backdrop-blur-2xl border border-accent/40 rounded-2xl overflow-hidden flex flex-col min-h-[580px] shadow-[0_10px_50px_rgba(0,0,0,0.8)] flex-1">
+              <div className="problem-statement-container bg-bg-card backdrop-blur-2xl border border-accent/40 rounded-2xl overflow-hidden flex flex-col min-h-[580px] shadow-[0_10px_50px_rgba(0,0,0,0.8)] flex-1">
+
                 <div className="px-5 py-3.5 bg-bg-elevated/80 border-b border-border/80 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse" />

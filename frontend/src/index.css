@@ -138,7 +138,14 @@ html.light [class*="bg-bg-primary/"] {
   background-color: rgba(30, 27, 46, 0.5) !important;
 }
 
-/* Light mode problem statement styling — clean dark text on light backgrounds */
+/* Problem statement card container theme adaptation */
+html.light .problem-statement-container {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05) !important;
+}
+
 html.light .problem-statement,
 html.light .problem-statement div,
 html.light .problem-statement p,
@@ -146,25 +153,34 @@ html.light .problem-statement span,
 html.light .problem-statement li {
   color: #0f172a !important;
 }
+
 html.light .problem-statement pre {
-  background: #f8fafc !important;
+  background: #f1f5f9 !important;
   border-color: #cbd5e1 !important;
   color: #0f172a !important;
 }
+
 html.light .problem-statement .tex-font-style-tt,
 html.light .problem-statement code {
   background: #e2e8f0 !important;
   color: #4338ca !important;
   border-color: #cbd5e1 !important;
 }
-html.light .problem-statement .sample-test .input,
-html.light .problem-statement .sample-test .output {
-  background: #f1f5f9 !important;
-  border-color: #cbd5e1 !important;
+
+html.dark .problem-statement-container {
+  background-color: #0b0b14 !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f1f5f9 !important;
 }
-html.light .problem-statement .sample-test .title {
-  color: #4338ca !important;
+
+html.dark .problem-statement,
+html.dark .problem-statement div,
+html.dark .problem-statement p,
+html.dark .problem-statement span,
+html.dark .problem-statement li {
+  color: #f1f5f9 !important;
 }
+
 
 /* Ensure problem statement images are visible in both Dark & Light mode */
 .problem-statement img {
