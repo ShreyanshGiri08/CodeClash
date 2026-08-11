@@ -7,6 +7,8 @@ import toast from "react-hot-toast";
 import { useSound } from "../context/SoundContext";
 import { useAuth } from "../context/AuthContext";
 import CyberMonacoEditor from "../components/editor/CyberMonacoEditor";
+import { parseMarkdownToCFHTML } from "../utils/markdownParser";
+
 
 
 
@@ -91,127 +93,10 @@ function cleanLaTeX(html) {
     clean = clean.replace(/\$\$(.*?)\$\$/g, '<span class="font-mono text-accent font-semibold px-0.5">$1</span>');
     clean = clean.replace(/\$(.*?)\$/g, '<span class="font-mono text-accent font-semibold px-0.5">$1</span>');
 
-    // 6. Add 1-click Copy buttons to Codeforces sample input and output boxes
-    if (!clean.includes("📋 Copy Input")) {
-      clean = clean.replace(
-        /<div class="input">/g,
-        `<div class="input relative group"><button onclick="try{const txt=this.parentElement.querySelector('pre').innerText; navigator.clipboard.writeText(txt); const b=this; b.innerText='✓ Copied!'; setTimeout(()=>b.innerText='📋 Copy Input', 1500);}catch(_){}" style="position:absolute; top:6px; right:6px; z-index:20;" class="bg-accent/20 hover:bg-accent hover:text-black border border-accent/60 text-accent font-mono text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-md">📋 Copy Input</button>`
-      );
-    }
-
-    if (!clean.includes("📋 Copy Output")) {
-      clean = clean.replace(
-        /<div class="output">/g,
-        `<div class="output relative group"><button onclick="try{const txt=this.parentElement.querySelector('pre').innerText; navigator.clipboard.writeText(txt); const b=this; b.innerText='✓ Copied!'; setTimeout(()=>b.innerText='📋 Copy Output', 1500);}catch(_){}" style="position:absolute; top:6px; right:6px; z-index:20;" class="bg-status-live/20 hover:bg-status-live hover:text-black border border-status-live/60 text-status-live font-mono text-[10px] font-black px-2.5 py-1 rounded-lg transition-all cursor-pointer shadow-md">📋 Copy Output</button>`
-      );
-    }
-
-
-
     return clean;
   } catch (e) {
     return html;
   }
-}
-
-
-
-
-
-function convertJinaMarkdownToCFHTML(mdText) {
-  if (!mdText || !mdText.includes("Markdown Content:")) return null;
-
-  const contentStart = mdText.indexOf("Markdown Content:");
-  let content = mdText.substring(contentStart + "Markdown Content:".length).trim();
-
-  const lines = content.split("\n");
-  let htmlParts = ['<div class="problem-statement">'];
-  let inCodeBlock = false;
-  let codeLines = [];
-  let boxCount = 0;
-
-  for (let line of lines) {
-    let trimmed = line.trim();
-
-    // Skip junk Codeforces website header links, logo & flags
-    if (
-      trimmed.includes("[![") ||
-      trimmed.includes("codeforces-sponsored-by") ||
-      trimmed.includes("Loading [MathJax]") ||
-      trimmed.includes("[Enter](") ||
-      trimmed.includes("[Register]") ||
-      trimmed.startsWith("* [Home]") ||
-      trimmed.startsWith("* [Top]") ||
-      trimmed.startsWith("* [Catalog]") ||
-      trimmed.startsWith("* [Contests]") ||
-      trimmed.startsWith("* [Gym]") ||
-      trimmed.startsWith("* [Problemset]") ||
-      trimmed.startsWith("* [Group]") ||
-      trimmed.startsWith("* [Rating]") ||
-      trimmed.startsWith("* [API]") ||
-      trimmed.startsWith("* [Calendar]") ||
-      trimmed.startsWith("Title:") ||
-      trimmed.startsWith("URL Source:") ||
-      trimmed === "---"
-    ) {
-      continue;
-    }
-
-    if (trimmed.startsWith("```")) {
-
-      if (inCodeBlock) {
-        const rawCodeText = codeLines.join("\n");
-        boxCount++;
-        const isInput = boxCount % 2 === 1;
-        const boxLabel = isInput ? `INPUT ${Math.ceil(boxCount / 2)}` : `OUTPUT ${Math.ceil(boxCount / 2)}`;
-
-        htmlParts.push(`
-          <div class="sample-test-container my-3 rounded-xl overflow-hidden border border-accent/30 bg-[#0b0b14] shadow-lg">
-            <div class="px-3.5 py-1.5 bg-[#121220] border-b border-accent/20 flex items-center justify-between font-mono text-xs">
-              <span class="text-accent font-bold tracking-wider">// ${boxLabel}</span>
-              <button 
-                onclick="window.copyTextToClipboard(this, '${encodeURIComponent(rawCodeText)}')"
-                class="font-mono text-[10px] font-extrabold bg-accent/20 hover:bg-accent hover:text-black text-accent border border-accent/40 px-2.5 py-1 rounded transition-all cursor-pointer"
-              >
-                📋 COPY
-              </button>
-
-            </div>
-            <pre class="p-3.5 font-mono text-xs text-purple-200 overflow-x-auto select-all m-0"><code>${rawCodeText}</code></pre>
-          </div>
-        `);
-        codeLines = [];
-        inCodeBlock = false;
-      } else {
-        inCodeBlock = true;
-      }
-      continue;
-    }
-
-
-    if (inCodeBlock) {
-      codeLines.push(line);
-      continue;
-    }
-
-    if (trimmed === "Input") {
-      htmlParts.push('<div class="section-title text-accent font-extrabold text-sm mt-5 mb-2 border-b border-accent/20 pb-1">// INPUT SPECIFICATION</div>');
-    } else if (trimmed === "Output") {
-      htmlParts.push('<div class="section-title text-accent font-extrabold text-sm mt-5 mb-2 border-b border-accent/20 pb-1">// OUTPUT SPECIFICATION</div>');
-    } else if (trimmed === "Example" || trimmed === "Examples") {
-      htmlParts.push('<div class="section-title text-accent font-extrabold text-sm mt-5 mb-2 border-b border-accent/20 pb-1">// SAMPLE TEST CASES</div>');
-    } else if (trimmed === "Note") {
-      htmlParts.push('<div class="section-title text-accent font-extrabold text-sm mt-5 mb-2 border-b border-accent/20 pb-1">// NOTE</div>');
-    } else if (trimmed === "Copy" || trimmed.startsWith("Title:") || trimmed.startsWith("URL Source:") || trimmed === "---") {
-      continue;
-    } else if (trimmed) {
-      let formattedLine = line.replace(/\$([^\$]+)\$/g, '<span class="tex-span font-mono text-accent/90">$1</span>');
-      htmlParts.push(`<p class="mb-3 text-sm leading-relaxed text-text-primary">${formattedLine}</p>`);
-    }
-  }
-
-  htmlParts.push('</div>');
-  return htmlParts.join("");
 }
 
 // Fetch problem statement via CORS proxies
@@ -247,10 +132,12 @@ async function fetchCFStatementClientSide(contestId, index) {
       let html = await resp.text();
       if (!html || html.length < 50) continue;
 
-      if (pUrl.includes("r.jina.ai") && html.includes("Markdown Content:")) {
-        const parsedHtml = convertJinaMarkdownToCFHTML(html);
-        if (parsedHtml) return parsedHtml;
+      if (pUrl.includes("r.jina.ai") && html && html.length > 30) {
+        const parsedHtml = parseMarkdownToCFHTML(html);
+        if (parsedHtml && parsedHtml.length > 50) return parsedHtml;
       }
+
+
 
       if (html.trim().startsWith("{")) {
         try {
@@ -779,7 +666,12 @@ export default function Practice() {
               {/* Problem Panel & Controls (Left 6 Columns) */}
               <div className="lg:col-span-6 space-y-6">
 
-                <div className="problem-statement-container bg-bg-card backdrop-blur-2xl border border-accent/40 rounded-2xl p-6 space-y-6 shadow-2xl flex flex-col min-h-[750px]">
+                <div 
+                  className="problem-statement-container backdrop-blur-2xl border border-accent/40 rounded-2xl p-6 space-y-6 shadow-2xl flex flex-col min-h-[750px]"
+                  style={{ backgroundColor: "#111428", color: "#f1f5f9" }}
+                >
+
+
 
                   <div className="flex items-center justify-between border-b border-border/80 pb-4">
                     <div>
@@ -807,9 +699,10 @@ export default function Practice() {
                     ) : statementHtml ? (
                       <div
                         className="problem-statement text-text-primary p-2 space-y-4 select-text cursor-text"
-                        dangerouslySetInnerHTML={{ __html: cleanLaTeX(statementHtml) }}
+                        dangerouslySetInnerHTML={{ __html: cleanLaTeX(parseMarkdownToCFHTML(statementHtml)) }}
                       />
                     ) : (
+
                       <div className="w-full min-h-[750px] flex flex-col rounded-xl overflow-hidden border border-accent/40 shadow-2xl bg-black/60">
                         <div className="bg-black/90 px-4 py-2.5 flex items-center justify-between border-b border-accent/30">
                           <span className="font-mono text-xs text-accent font-bold flex items-center gap-2">
