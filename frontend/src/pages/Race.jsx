@@ -180,14 +180,32 @@ function convertJinaMarkdownToCFHTML(mdText) {
   let htmlParts = ['<div class="problem-statement">'];
   let inCodeBlock = false;
   let codeLines = [];
+  let boxCount = 0;
 
   for (let line of lines) {
     let trimmed = line.trim();
 
     if (trimmed.startsWith("```")) {
       if (inCodeBlock) {
-        const codeContent = codeLines.join("\n");
-        htmlParts.push(`<pre class="sample-test-box bg-[#0d0d15] text-accent p-3.5 rounded-xl border border-accent/30 font-mono text-xs my-3 overflow-x-auto select-all"><code>${codeContent}</code></pre>`);
+        const rawCodeText = codeLines.join("\n");
+        boxCount++;
+        const isInput = boxCount % 2 === 1;
+        const boxLabel = isInput ? `INPUT ${Math.ceil(boxCount / 2)}` : `OUTPUT ${Math.ceil(boxCount / 2)}`;
+
+        htmlParts.push(`
+          <div class="sample-test-container my-3 rounded-xl overflow-hidden border border-accent/30 bg-[#0b0b14] shadow-lg">
+            <div class="px-3.5 py-1.5 bg-[#121220] border-b border-accent/20 flex items-center justify-between font-mono text-xs">
+              <span class="text-accent font-bold tracking-wider">// ${boxLabel}</span>
+              <button 
+                onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(rawCodeText)}')).then(()=>{this.innerText='✓ COPIED!';setTimeout(()=>this.innerText='📋 COPY',2000)})"
+                class="font-mono text-[10px] font-extrabold bg-accent/15 hover:bg-accent hover:text-black text-accent border border-accent/40 px-2.5 py-0.5 rounded transition-all cursor-pointer"
+              >
+                📋 COPY
+              </button>
+            </div>
+            <pre class="p-3.5 font-mono text-xs text-purple-200 overflow-x-auto select-all m-0"><code>${rawCodeText}</code></pre>
+          </div>
+        `);
         codeLines = [];
         inCodeBlock = false;
       } else {
@@ -195,6 +213,7 @@ function convertJinaMarkdownToCFHTML(mdText) {
       }
       continue;
     }
+
 
     if (inCodeBlock) {
       codeLines.push(line);
