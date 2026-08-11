@@ -168,8 +168,6 @@ export function parseMarkdownToCFHTML(mdText) {
             <pre class="p-4 font-mono text-sm font-bold text-[#00ff9d] overflow-x-auto select-all m-0 bg-[#040409]"><code>${rawCodeText}</code></pre>
           </div>
         `);
-
-
         codeLines = [];
         inCodeBlock = false;
       } else {
@@ -234,32 +232,36 @@ export function parseMarkdownToCFHTML(mdText) {
       continue;
     }
 
-    // Clean Math Formatting & TeX symbols (e.g. 10^{4} -> 10⁴, \le / \leq -> ≤, \left|\right. s -> |s|)
+    // Clean Math Formatting & TeX symbols (e.g. 10^{4} -> 10⁴, \ldots -> ..., \left. \right. -> stripped)
     let formattedLine = line;
 
-    // 1. Clean LaTeX left/right bracket delimiters (e.g. \left| \right. s \left| \right. -> |s|)
+    // 1. Clean TeX Ellipsis (\ldots, \cdots, \dots -> ...)
+    formattedLine = formattedLine.replace(/\\ldots|\\cdots|\\dots/g, "...");
+
+    // 2. Clean LaTeX left/right bracket artifacts (\right., \left., \right, \left, ≤ft)
     formattedLine = formattedLine.replace(/\\left\|\s*\\right\.\s*/g, "|");
     formattedLine = formattedLine.replace(/\\left\|\s*\\right\|/g, "|");
-    formattedLine = formattedLine.replace(/\\left\|/g, "|").replace(/\\right\|/g, "|");
-    formattedLine = formattedLine.replace(/\\left\(/g, "(").replace(/\\right\)/g, ")");
-    formattedLine = formattedLine.replace(/\\left\[/g, "[").replace(/\\right\]/g, "]");
-    formattedLine = formattedLine.replace(/\\left\\\{/g, "{").replace(/\\right\\\}/g, "}");
+    formattedLine = formattedLine.replace(/\\left\\\.|\s*\\right\\\.|\s*\\right\./g, "");
+    formattedLine = formattedLine.replace(/\\left\./g, "");
+    formattedLine = formattedLine.replace(/≤ft/g, "");
+    formattedLine = formattedLine.replace(/\\left/g, "");
+    formattedLine = formattedLine.replace(/\\right/g, "");
 
-    // 2. Clean TeX powers 10^{4} -> 10⁴, n^{2} -> n², 10^5 -> 10⁵
-    formattedLine = formattedLine.replace(/10\^\{([0-9]+)\}/g, (m, p) => `10<sup>${p}</sup>`);
-    formattedLine = formattedLine.replace(/([a-zA-Z0-9])\^\{([a-zA-Z0-9\+\-]+)\}/g, `$1<sup>$2</sup>`);
-    formattedLine = formattedLine.replace(/([a-zA-Z0-9])\^([0-9]+)/g, `$1<sup>$2</sup>`);
-
-    // 3. Clean Inequalities & Operators (\leq / \le -> ≤, \geq / \ge -> ≥, \cdot -> ·, \times -> ×)
-    formattedLine = formattedLine.replace(/\\leq|\\le/g, "≤");
-    formattedLine = formattedLine.replace(/\\geq|\\ge/g, "≥");
+    // 3. Clean Inequalities & Operators (\leq / \le / ≤q -> ≤, \geq / \ge / ≥q -> ≥, \cdot -> ·, \times -> ×)
+    formattedLine = formattedLine.replace(/\\leq|\\le|≤q/g, "≤");
+    formattedLine = formattedLine.replace(/\\geq|\\ge|≥q/g, "≥");
     formattedLine = formattedLine.replace(/\\cdot/g, "·");
     formattedLine = formattedLine.replace(/\\times/g, "×");
     formattedLine = formattedLine.replace(/\\neq|\\ne/g, "≠");
     formattedLine = formattedLine.replace(/\\to|\\rightarrow/g, "→");
-    formattedLine = formattedLine.replace(/\\dots/g, "...");
 
-    // 4. Clean Jina LaTeX variables (_n_, _p_ _i_, _p_ _i_ + 1 -> n, p_i, p_i + 1)
+    // 4. Clean TeX powers 10^{4} -> 10⁴, 10^9 -> 10⁹, n^2 -> n²
+    formattedLine = formattedLine.replace(/10\^\{([0-9]+)\}/g, (m, p) => `10<sup>${p}</sup>`);
+    formattedLine = formattedLine.replace(/10\^([0-9]+)/g, (m, p) => `10<sup>${p}</sup>`);
+    formattedLine = formattedLine.replace(/([a-zA-Z0-9])\^\{([a-zA-Z0-9\+\-]+)\}/g, `$1<sup>$2</sup>`);
+    formattedLine = formattedLine.replace(/([a-zA-Z0-9])\^([0-9]+)/g, `$1<sup>$2</sup>`);
+
+    // 5. Clean LaTeX subscripts (a_1 -> a₁, a_i -> aᵢ, a_n -> aₙ, p_i -> pᵢ)
     formattedLine = formattedLine.replace(/_([a-zA-Z0-9_]+)_/g, '<code class="font-mono text-accent bg-accent/15 px-1 py-0.5 rounded text-xs font-bold">$1</code>');
     formattedLine = formattedLine.replace(/_([a-zA-Z0-9])\s+_([a-zA-Z0-9])_/g, '<code class="font-mono text-accent bg-accent/15 px-1 py-0.5 rounded text-xs font-bold">$1_$2</code>');
 
@@ -278,7 +280,6 @@ export function parseMarkdownToCFHTML(mdText) {
     formattedLine = formattedLine.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer" class="text-accent underline font-mono hover:text-white">$1</a>');
     formattedLine = formattedLine.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-accent/90">$1</strong>');
     formattedLine = formattedLine.replace(/\$([^\$]+)\$/g, '<code class="font-mono text-accent bg-accent/15 border border-accent/30 px-1 py-0.5 rounded text-xs font-bold">$1</code>');
-
 
     if (trimmed.startsWith("* ") || trimmed.startsWith("- ")) {
       const listContent = formattedLine.replace(/^[\*\-]\s*/, "");
