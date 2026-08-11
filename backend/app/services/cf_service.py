@@ -130,61 +130,58 @@ async def get_problem_statement(contest_id: int, index: str) -> dict:
 
     # Check cache first (only valid scraped statements are cached)
     cached = problem_cache.get(cache_key)
-    if cached is not None and cached.get("is_valid") is True:
+    if cached and isinstance(cached, dict) and cached.get("is_valid"):
+        logger.info(f"Serving problem statement for {contest_id}{index} from cache")
         return cached
     elif cached is not None:
         problem_cache.delete(cache_key)
 
-    cf_url = f"https://codeforces.com/contest/{contest_id}/problem/{index}"
-    problemset_url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}"
+    cf_url = f"https://codeforces.com/contest/{contest_id}/problem/{index}?locale=en"
+    problemset_url = f"https://codeforces.com/problemset/problem/{contest_id}/{index}?locale=en"
 
     encoded_cf_url = urllib.parse.quote(cf_url, safe="")
     encoded_ps_url = urllib.parse.quote(problemset_url, safe="")
 
     urls_to_try = [
-        f"https://m.codeforces.com/problemset/problem/{contest_id}/{index}",
-        f"https://m.codeforces.com/contest/{contest_id}/problem/{index}",
         f"https://r.jina.ai/{cf_url}",
+        f"https://r.jina.ai/{problemset_url}",
+        f"https://api.allorigins.win/get?url={encoded_ps_url}",
         f"https://api.allorigins.win/get?url={encoded_cf_url}",
         f"https://api.codetabs.com/v1/proxy?quest={encoded_cf_url}",
         cf_url,
     ]
 
-
-
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
         "Accept-Language": "en-US,en;q=0.9",
-        "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-        "Sec-Ch-Ua-Mobile": "?0",
-        "Sec-Ch-Ua-Platform": '"Windows"',
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Upgrade-Insecure-Requests": "1",
     }
 
-    statement_div = None
+    statement_div_html = None
 
     for target_url in urls_to_try:
         try:
             logger.info("Attempting to fetch problem statement", extra={"url": target_url})
-            async with httpx.AsyncClient(headers=headers, timeout=10.0, follow_redirects=True) as client:
+            async with httpx.AsyncClient(headers=headers, timeout=12.0, follow_redirects=True) as client:
                 resp = await client.get(target_url)
-                if resp.status_code == 200:
-                    html_text = ""
+                if resp.status_code == 200 and resp.text:
+                    html_text = resp.text
+
                     if "allorigins.win" in target_url:
                         try:
                             data = resp.json()
                             html_text = data.get("contents", "")
                         except Exception:
                             html_text = resp.text
-                    else:
-                        html_text = resp.text
 
-                    if html_text:
+                    if "r.jina.ai" in target_url and "Markdown Content:" in html_text:
+                        parsed_jina = parse_jina_markdown_to_html(html_text, contest_id, index)
+                        if parsed_jina:
+                            statement_div_html = parsed_jina
+                            logger.info(f"Successfully scraped & parsed problem statement via Jina proxy: {target_url}")
+                            break
+
+                    if html_text and "<div" in html_text:
                         soup = BeautifulSoup(html_text, "html.parser")
                         found = (
                             soup.find("div", class_="problem-statement") or
@@ -193,18 +190,17 @@ async def get_problem_statement(contest_id: int, index: str) -> dict:
                             soup.find("div", id="pageContent")
                         )
                         if found:
-                            statement_div = found
+                            statement_div_html = str(found)
                             logger.info(f"Successfully scraped problem-statement via {target_url}")
                             break
         except Exception as e:
             logger.warning(f"Problem fetch attempt failed for {target_url}: {e}")
 
-
-
-    if not statement_div:
+    if not statement_div_html:
         logger.warning(f"problem-statement div not found for {contest_id}{index}")
-        # Return fallback WITHOUT caching — next request will retry scraping
         return {"title": f"Problem {contest_id}{index}", "html": None, "url": cf_url, "is_valid": False}
+
+    statement_div = BeautifulSoup(statement_div_html, "html.parser")
 
     # Fix relative image URLs (e.g. /predownloaded/... -> https://codeforces.com/predownloaded/...)
     for img in statement_div.find_all("img"):
