@@ -44,6 +44,7 @@ async def get_me(
             "cf_handle": cf_handle,
             "cf_verified": cf_verified,
             "elo": user["elo"] if "elo" in user and user["elo"] is not None else 1200,
+
             "races_played": user["races_played"] if "races_played" in user and user["races_played"] is not None else 0,
             "races_won": user["races_won"] if "races_won" in user and user["races_won"] is not None else 0,
             "avatar": user["avatar"] if "avatar" in user and user["avatar"] else "avatar1",

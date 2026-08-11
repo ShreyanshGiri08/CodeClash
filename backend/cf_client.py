@@ -49,6 +49,30 @@ def parse_jina_markdown_to_html(md_text: str) -> str:
 
     for line in lines:
         stripped = line.strip()
+
+        # Filter out Codeforces website navigation header, logo & flags
+        if (
+            "[![" in stripped
+            or "codeforces-sponsored-by" in stripped
+            or "Loading [MathJax]" in stripped
+            or "[Enter](" in stripped
+            or "[Register]" in stripped
+            or stripped.startswith("* [Home]")
+            or stripped.startswith("* [Top]")
+            or stripped.startswith("* [Catalog]")
+            or stripped.startswith("* [Contests]")
+            or stripped.startswith("* [Gym]")
+            or stripped.startswith("* [Problemset]")
+            or stripped.startswith("* [Group]")
+            or stripped.startswith("* [Rating]")
+            or stripped.startswith("* [API]")
+            or stripped.startswith("* [Calendar]")
+            or stripped.startswith("Title:")
+            or stripped.startswith("URL Source:")
+            or stripped == "---"
+        ):
+            continue
+
         if stripped.startswith("```"):
             if in_code_block:
                 code_content = "\n".join(code_block_lines)
@@ -73,13 +97,12 @@ def parse_jina_markdown_to_html(md_text: str) -> str:
             html_out.append('<div class="section-title text-accent font-bold text-sm mt-4 mb-2">Note</div>')
         elif stripped == "Copy":
             continue
-        elif stripped.startswith("Title:") or stripped.startswith("URL Source:") or stripped == "---":
-            continue
         elif stripped:
             html_out.append(f'<p class="mb-3 text-sm leading-relaxed">{line}</p>')
 
     html_out.append('</div>')
     return "".join(html_out)
+
 
 
 async def get_problem_statement(contest_id: int, index: str) -> dict:

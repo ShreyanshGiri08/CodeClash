@@ -185,7 +185,32 @@ function convertJinaMarkdownToCFHTML(mdText) {
   for (let line of lines) {
     let trimmed = line.trim();
 
+    // Skip junk Codeforces website header links, logo & flags
+    if (
+      trimmed.includes("[![") ||
+      trimmed.includes("codeforces-sponsored-by") ||
+      trimmed.includes("Loading [MathJax]") ||
+      trimmed.includes("[Enter](") ||
+      trimmed.includes("[Register]") ||
+      trimmed.startsWith("* [Home]") ||
+      trimmed.startsWith("* [Top]") ||
+      trimmed.startsWith("* [Catalog]") ||
+      trimmed.startsWith("* [Contests]") ||
+      trimmed.startsWith("* [Gym]") ||
+      trimmed.startsWith("* [Problemset]") ||
+      trimmed.startsWith("* [Group]") ||
+      trimmed.startsWith("* [Rating]") ||
+      trimmed.startsWith("* [API]") ||
+      trimmed.startsWith("* [Calendar]") ||
+      trimmed.startsWith("Title:") ||
+      trimmed.startsWith("URL Source:") ||
+      trimmed === "---"
+    ) {
+      continue;
+    }
+
     if (trimmed.startsWith("```")) {
+
       if (inCodeBlock) {
         const rawCodeText = codeLines.join("\n");
         boxCount++;
