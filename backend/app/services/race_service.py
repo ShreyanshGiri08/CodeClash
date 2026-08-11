@@ -179,12 +179,13 @@ async def check_and_finalize_race(conn, race_id: str) -> dict:
             UPDATE races
             SET status = 'finished', winner_id = $1, ended_at = NOW(),
                 elo_applied = TRUE,
-                p1_elo_after = CASE WHEN player1_id = $1 THEN $2 ELSE $3 END,
-                p2_elo_after = CASE WHEN player2_id = $1 THEN $2 ELSE $3 END
+                p1_elo_after = CASE WHEN player1_id = $1 THEN $2::integer ELSE $3::integer END,
+                p2_elo_after = CASE WHEN player2_id = $1 THEN $2::integer ELSE $3::integer END
             WHERE id = $4 AND elo_applied = FALSE
             """,
             winner["id"], new_w, new_l, rid,
         )
+
 
         if "UPDATE 1" in result:
             await conn.execute(

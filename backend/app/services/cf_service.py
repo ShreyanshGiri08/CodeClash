@@ -66,19 +66,31 @@ async def get_cf_submissions(handle: str, count: int = 20) -> list:
 async def get_ac_timestamp(handle: str, contest_id: int, index: str, after_timestamp: int) -> int | None:
     """
     Check if a user has an Accepted verdict on a specific problem submitted
-    after race start, returning the earliest AC submission timestamp (creationTimeSeconds).
+    after race start (with 60-second clock drift grace window).
     Returns None if no AC submission exists.
     """
-    submissions = await get_cf_submissions(handle, count=30)
+    submissions = await get_cf_submissions(handle, count=50)
     ac_times = []
+    
+    target_contest = str(contest_id)
+    target_index = str(index).upper()
+    # 60s grace buffer to absorb server clock drift between Render and Codeforces
+    effective_start = after_timestamp - 60
+
     for sub in submissions:
+        prob = sub.get("problem", {})
+        sub_contest = str(prob.get("contestId", ""))
+        sub_index = str(prob.get("index", "")).upper()
+        sub_time = sub.get("creationTimeSeconds", 0)
+        verdict = sub.get("verdict")
+
         if (
-            sub.get("problem", {}).get("contestId") == contest_id
-            and sub.get("problem", {}).get("index") == index
-            and sub.get("creationTimeSeconds", 0) >= after_timestamp
-            and sub.get("verdict") == "OK"
+            sub_contest == target_contest
+            and sub_index == target_index
+            and sub_time >= effective_start
+            and verdict == "OK"
         ):
-            ac_times.append(sub.get("creationTimeSeconds"))
+            ac_times.append(sub_time)
     
     if ac_times:
         earliest_ac = min(ac_times)
@@ -96,27 +108,37 @@ async def check_verdict(handle: str, contest_id: int, index: str, after_timestam
     return ts is not None
 
 
-
 async def get_all_submissions_verdicts(handle: str, contest_id: int, index: str, after_timestamp: int) -> list[dict]:
     """
     Return all submissions for a specific problem after race start.
     Used to show verdict history in the race room.
     """
-    submissions = await get_cf_submissions(handle, count=30)
+    submissions = await get_cf_submissions(handle, count=50)
     results = []
+
+    target_contest = str(contest_id)
+    target_index = str(index).upper()
+    effective_start = after_timestamp - 60
+
     for sub in submissions:
+        prob = sub.get("problem", {})
+        sub_contest = str(prob.get("contestId", ""))
+        sub_index = str(prob.get("index", "")).upper()
+        sub_time = sub.get("creationTimeSeconds", 0)
+
         if (
-            sub.get("problem", {}).get("contestId") == contest_id
-            and sub.get("problem", {}).get("index") == index
-            and sub.get("creationTimeSeconds", 0) >= after_timestamp
+            sub_contest == target_contest
+            and sub_index == target_index
+            and sub_time >= effective_start
         ):
             results.append({
                 "id": sub.get("id"),
                 "verdict": sub.get("verdict", "UNKNOWN"),
-                "time": sub.get("creationTimeSeconds"),
+                "time": sub_time,
                 "language": sub.get("programmingLanguage", ""),
             })
     return results
+
 
 
 import urllib.parse

@@ -184,11 +184,13 @@ async def forfeit_race(
 
     result = await conn.execute(
         """UPDATE races SET status='finished', winner_id=$1, ended_at=NOW(),
-           elo_applied=TRUE, p1_elo_after=CASE WHEN player1_id=$1 THEN $2 ELSE $3 END,
-           p2_elo_after=CASE WHEN player2_id=$1 THEN $2 ELSE $3 END
+           elo_applied=TRUE, 
+           p1_elo_after=CASE WHEN player1_id=$1 THEN $2::integer ELSE $3::integer END,
+           p2_elo_after=CASE WHEN player2_id=$1 THEN $2::integer ELSE $3::integer END
            WHERE id=$4 AND elo_applied=FALSE""",
         winner_uid, new_w, new_l, rid,
     )
+
 
     if "UPDATE 1" in result:
         await conn.execute("UPDATE users SET elo=$1, races_played=races_played+1, races_won=races_won+1 WHERE id=$2", new_w, winner_uid)
