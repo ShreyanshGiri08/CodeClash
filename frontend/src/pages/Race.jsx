@@ -222,11 +222,12 @@ function convertJinaMarkdownToCFHTML(mdText) {
             <div class="px-3.5 py-1.5 bg-[#121220] border-b border-accent/20 flex items-center justify-between font-mono text-xs">
               <span class="text-accent font-bold tracking-wider">// ${boxLabel}</span>
               <button 
-                onclick="navigator.clipboard.writeText(decodeURIComponent('${encodeURIComponent(rawCodeText)}')).then(()=>{this.innerText='✓ COPIED!';setTimeout(()=>this.innerText='📋 COPY',2000)})"
-                class="font-mono text-[10px] font-extrabold bg-accent/15 hover:bg-accent hover:text-black text-accent border border-accent/40 px-2.5 py-0.5 rounded transition-all cursor-pointer"
+                onclick="window.copyTextToClipboard(this, '${encodeURIComponent(rawCodeText)}')"
+                class="font-mono text-[10px] font-extrabold bg-accent/20 hover:bg-accent hover:text-black text-accent border border-accent/40 px-2.5 py-1 rounded transition-all cursor-pointer"
               >
                 📋 COPY
               </button>
+
             </div>
             <pre class="p-3.5 font-mono text-xs text-purple-200 overflow-x-auto select-all m-0"><code>${rawCodeText}</code></pre>
           </div>
